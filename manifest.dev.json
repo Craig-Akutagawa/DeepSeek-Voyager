@@ -8,25 +8,24 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["contentStyle.css", "dev-icon-128.png", "dev-icon-32.png", "icon-32.png", "icon-128.png"],
-      "matches": [
-        "https://gemini.google.com/*",
-        "https://aistudio.google.com/*"
-      ]
+      "resources": [
+        "contentStyle.css",
+        "dev-icon-128.png",
+        "dev-icon-32.png",
+        "icon-32.png",
+        "icon-128.png"
+      ],
+      "matches": ["https://chat.deepseek.com/*"]
     }
   ],
   "content_scripts": [
     {
-      "matches": ["https://gemini.google.com/*", "https://aistudio.google.com/*"],
+      "matches": ["https://chat.deepseek.com/*"],
       "js": ["src/pages/content/index.tsx"],
       "css": ["contentStyle.css"]
     }
   ],
-  "host_permissions": [
-    "https://*.googleusercontent.com/*",
-    "https://lh3.google.com/*",
-    "https://*.ggpht.com/*"
-  ],
+  "host_permissions": ["https://chat.deepseek.com/*"],
   "background": {
     "service_worker": "src/pages/background/index.ts",
     "type": "module"

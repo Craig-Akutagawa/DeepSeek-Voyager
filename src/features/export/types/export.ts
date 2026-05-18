@@ -73,7 +73,7 @@ export interface BaseExportPayload {
  * JSON export payload (existing format)
  */
 export interface JSONExportPayload extends BaseExportPayload {
-  format: 'gemini-voyager.chat.v1';
+  format: 'deepseek-voyager.chat.v1';
   items: ChatTurn[];
 }
 

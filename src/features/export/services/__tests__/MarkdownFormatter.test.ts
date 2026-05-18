@@ -7,10 +7,9 @@ import { describe, it, expect } from 'vitest';
 import type { ChatTurn, ConversationMetadata } from '../../types/export';
 import { MarkdownFormatter } from '../MarkdownFormatter';
 
-
 describe('MarkdownFormatter', () => {
   const mockMetadata: ConversationMetadata = {
-    url: 'https://gemini.google.com/app/test-conversation',
+    url: 'https://chat.deepseek.com/a/chat/s/12345678-1234-1234-1234-123456789abc',
     exportedAt: '2025-01-15T10:30:00.000Z',
     count: 2,
     title: 'Test Conversation',
@@ -43,7 +42,7 @@ describe('MarkdownFormatter', () => {
 
       expect(markdown).toContain('**Date**:');
       expect(markdown).toContain('**Turns**: 2');
-      expect(markdown).toContain('[Gemini Chat]');
+      expect(markdown).toContain('[DeepSeek Chat]');
     });
 
     it('should format turns correctly', () => {
@@ -81,7 +80,7 @@ describe('MarkdownFormatter', () => {
     it('should include footer', () => {
       const markdown = MarkdownFormatter.format(mockTurns, mockMetadata);
 
-      expect(markdown).toContain('Gemini Voyager');
+      expect(markdown).toContain('DeepSeek Voyager');
       expect(markdown).toContain('Generated on');
     });
 
@@ -120,7 +119,7 @@ describe('MarkdownFormatter', () => {
     it('should generate filename with timestamp', () => {
       const filename = MarkdownFormatter.generateFilename();
 
-      expect(filename).toMatch(/^gemini-chat-\d{8}-\d{6}\.md$/);
+      expect(filename).toMatch(/^deepseek-chat-\d{8}-\d{6}\.md$/);
     });
 
     it('should have .md extension', () => {

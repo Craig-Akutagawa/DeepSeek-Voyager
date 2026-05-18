@@ -63,7 +63,10 @@ export class MarkdownFormatter {
   /**
    * Async formatter that tries to inline images as data URLs
    */
-  static async formatWithAssets(turns: ChatTurn[], metadata: ConversationMetadata): Promise<string> {
+  static async formatWithAssets(
+    turns: ChatTurn[],
+    metadata: ConversationMetadata
+  ): Promise<string> {
     const md = this.format(turns, metadata);
     const urls = this.extractImageUrls(md);
     if (urls.length === 0) return md;
@@ -73,7 +76,7 @@ export class MarkdownFormatter {
       urls.map(async (u) => {
         const data = await this.fetchAsDataURL(u);
         if (data) urlToData.set(u, data);
-      }),
+      })
     );
     if (urlToData.size === 0) return md;
 
@@ -121,7 +124,7 @@ export class MarkdownFormatter {
     // Metadata table
     lines.push(`**Date**: ${this.formatDate(metadata.exportedAt)}`);
     lines.push(`**Turns**: ${metadata.count}`);
-    lines.push(`**Source**: [Gemini Chat](${metadata.url})`);
+    lines.push(`**Source**: [DeepSeek Chat](${metadata.url})`);
 
     return lines.join('\n');
   }
@@ -194,7 +197,7 @@ export class MarkdownFormatter {
    */
   private static formatFooter(metadata: ConversationMetadata): string {
     return [
-      `*Exported from [Gemini Voyager](https://github.com/Nagi-ovo/gemini-voyager)*`,
+      `*Exported from DeepSeek Voyager*`,
       `*Generated on ${this.formatDate(metadata.exportedAt)}*`,
     ].join('  \n'); // Two spaces for line break
   }
@@ -207,17 +210,15 @@ export class MarkdownFormatter {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
 
-      // Extract from Gemini URL pattern
-      // e.g., /app/conversation-id or /chat/conversation-id
-      const match = pathname.match(/\/(app|chat)\/([^/]+)/);
+      const match = pathname.match(/\/a\/chat\/s\/([^/]+)/);
       if (match) {
-        const id = match[2];
-        return `Gemini Conversation ${id.substring(0, 8)}`;
+        const id = match[1];
+        return `DeepSeek Conversation ${id.substring(0, 8)}`;
       }
 
-      return 'Gemini Conversation';
+      return 'DeepSeek Conversation';
     } catch {
-      return 'Gemini Conversation';
+      return 'DeepSeek Conversation';
     }
   }
 
@@ -259,7 +260,7 @@ export class MarkdownFormatter {
     const hh = pad(d.getHours());
     const mm = pad(d.getMinutes());
     const ss = pad(d.getSeconds());
-    return `gemini-chat-${y}${m}${day}-${hh}${mm}${ss}.md`;
+    return `deepseek-chat-${y}${m}${day}-${hh}${mm}${ss}.md`;
   }
 
   /**

@@ -2,13 +2,20 @@ node_modules/
 /dist_chrome/
 /dist_firefox/
 /dist_safari/
+/dist_edge/
 
 # Vitest
 coverage/
 .vitest/
 
+# Playwright and browser automation output
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
 # Generated Xcode projects (users generate these locally)
-/Gemini Voyager/
+/DeepSeek Voyager/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
@@ -31,4 +38,6 @@ yarn-error.log*
 *.mov
 *.mp4
 *.zip
+*.crx
+*.xpi
 
