@@ -6,7 +6,13 @@
 
 import JSZip from 'jszip';
 
-import type { ChatTurn, ConversationMetadata, ExportFormat, ExportOptions, ExportResult } from '../types/export';
+import type {
+  ChatTurn,
+  ConversationMetadata,
+  ExportFormat,
+  ExportOptions,
+  ExportResult,
+} from '../types/export';
 
 import { MarkdownFormatter } from './MarkdownFormatter';
 import { PDFPrintService } from './PDFPrintService';
@@ -22,7 +28,7 @@ export class ConversationExportService {
   static async export(
     turns: ChatTurn[],
     metadata: ConversationMetadata,
-    options: ExportOptions,
+    options: ExportOptions
   ): Promise<ExportResult> {
     try {
       switch (options.format) {
@@ -54,9 +60,13 @@ export class ConversationExportService {
   /**
    * Export as JSON (existing format)
    */
-  private static exportJSON(turns: ChatTurn[], metadata: ConversationMetadata, options: ExportOptions): ExportResult {
+  private static exportJSON(
+    turns: ChatTurn[],
+    metadata: ConversationMetadata,
+    options: ExportOptions
+  ): ExportResult {
     const payload = {
-      format: 'gemini-voyager.chat.v1' as const,
+      format: 'deepseek-voyager.chat.v1' as const,
       url: metadata.url,
       exportedAt: metadata.exportedAt,
       count: metadata.count,
@@ -79,7 +89,7 @@ export class ConversationExportService {
   private static async exportMarkdown(
     turns: ChatTurn[],
     metadata: ConversationMetadata,
-    options: ExportOptions,
+    options: ExportOptions
   ): Promise<ExportResult> {
     // First create a clean markdown (no inlining)
     const markdown = MarkdownFormatter.format(turns, metadata);
@@ -117,7 +127,11 @@ export class ConversationExportService {
     const bgFetch = async (u: string): Promise<{ blob: Blob; contentType: string } | null> => {
       try {
         const resp = await new Promise<any>((resolve) => {
-          try { chrome.runtime?.sendMessage?.({ type: 'gv.fetchImage', url: u }, resolve); } catch { resolve(null); }
+          try {
+            chrome.runtime?.sendMessage?.({ type: 'gv.fetchImage', url: u }, resolve);
+          } catch {
+            resolve(null);
+          }
         });
         if (resp && resp.ok && resp.base64) {
           const contentType = String(resp.contentType || 'application/octet-stream');
@@ -131,39 +145,44 @@ export class ConversationExportService {
       return null;
     };
 
-    await Promise.all(imageUrls.map(async (url) => {
-      // Attempt content-script fetch first
-      let blob: Blob | null = null;
-      let contentType: string | null = null;
-      try {
-        const resp = await fetch(url, { credentials: 'include', mode: 'cors' as RequestMode });
-        if (resp.ok) {
-          contentType = resp.headers.get('Content-Type');
-          blob = await resp.blob();
+    await Promise.all(
+      imageUrls.map(async (url) => {
+        // Attempt content-script fetch first
+        let blob: Blob | null = null;
+        let contentType: string | null = null;
+        try {
+          const resp = await fetch(url, { credentials: 'include', mode: 'cors' as RequestMode });
+          if (resp.ok) {
+            contentType = resp.headers.get('Content-Type');
+            blob = await resp.blob();
+          }
+        } catch {}
+        // If failed, try background fetch (bypasses page CORS)
+        if (!blob) {
+          const bg = await bgFetch(url);
+          if (bg) {
+            blob = bg.blob;
+            contentType = bg.contentType;
+          }
         }
-      } catch {}
-      // If failed, try background fetch (bypasses page CORS)
-      if (!blob) {
-        const bg = await bgFetch(url);
-        if (bg) {
-          blob = bg.blob;
-          contentType = bg.contentType;
-        }
-      }
-      if (!blob) return; // leave original URL
-      const ext = pickExt(contentType, url);
-      const fileName = `img-${String(idx++).padStart(3, '0')}.${ext}`;
-      // Store inside the 'assets' folder WITHOUT duplicating the folder name
-      await assetsFolder?.file(fileName, blob);
-      // Reference in markdown should include the 'assets/' prefix
-      mapping.set(url, `assets/${fileName}`);
-    }));
+        if (!blob) return; // leave original URL
+        const ext = pickExt(contentType, url);
+        const fileName = `img-${String(idx++).padStart(3, '0')}.${ext}`;
+        // Store inside the 'assets' folder WITHOUT duplicating the folder name
+        await assetsFolder?.file(fileName, blob);
+        // Reference in markdown should include the 'assets/' prefix
+        mapping.set(url, `assets/${fileName}`);
+      })
+    );
 
     const packagedMd = MarkdownFormatter.rewriteImageUrls(markdown, mapping);
     zip.file('chat.md', packagedMd);
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const filename = (options.filename || MarkdownFormatter.generateFilename()).replace(/\.md$/i, '.zip');
+    const filename = (options.filename || MarkdownFormatter.generateFilename()).replace(
+      /\.md$/i,
+      '.zip'
+    );
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
@@ -171,7 +190,9 @@ export class ConversationExportService {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
-      try { document.body.removeChild(a); } catch {}
+      try {
+        document.body.removeChild(a);
+      } catch {}
       URL.revokeObjectURL(url);
     }, 0);
 
@@ -184,7 +205,7 @@ export class ConversationExportService {
   private static async exportPDF(
     turns: ChatTurn[],
     metadata: ConversationMetadata,
-    options: ExportOptions,
+    options: ExportOptions
   ): Promise<ExportResult> {
     await PDFPrintService.export(turns, metadata);
 
@@ -232,7 +253,7 @@ export class ConversationExportService {
     const hh = pad(d.getHours());
     const mm = pad(d.getMinutes());
     const ss = pad(d.getSeconds());
-    return `gemini-chat-${y}${m}${day}-${hh}${mm}${ss}.${extension}`;
+    return `deepseek-chat-${y}${m}${day}-${hh}${mm}${ss}.${extension}`;
   }
 
   /**
@@ -246,20 +267,15 @@ export class ConversationExportService {
   }> {
     return [
       {
-        format: 'json' as ExportFormat,
-        label: 'JSON',
-        description: 'Machine-readable format for developers',
-      },
-      {
         format: 'markdown' as ExportFormat,
         label: 'Markdown',
         description: 'Clean, portable text format (recommended)',
         recommended: true,
       },
       {
-        format: 'pdf' as ExportFormat,
-        label: 'PDF',
-        description: 'Print-friendly format via Save as PDF',
+        format: 'json' as ExportFormat,
+        label: 'JSON',
+        description: 'Machine-readable format for developers',
       },
     ];
   }

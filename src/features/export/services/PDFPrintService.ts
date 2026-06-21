@@ -47,7 +47,10 @@ export class PDFPrintService {
   /**
    * Create HTML container for printing
    */
-  private static createPrintContainer(turns: ChatTurn[], metadata: ConversationMetadata): HTMLElement {
+  private static createPrintContainer(
+    turns: ChatTurn[],
+    metadata: ConversationMetadata
+  ): HTMLElement {
     const container = document.createElement('div');
     container.id = this.PRINT_CONTAINER_ID;
     container.className = 'gv-print-only';
@@ -101,7 +104,7 @@ export class PDFPrintService {
             img.src = data;
           } catch {}
         }
-      }),
+      })
     );
 
     // Attempt to wait for image decoding
@@ -109,8 +112,8 @@ export class PDFPrintService {
       imgs.map((img) =>
         (img as any).decode?.().catch(() => {
           /* ignore */
-        }),
-      ),
+        })
+      )
     );
   }
 
@@ -127,7 +130,7 @@ export class PDFPrintService {
         <div class="gv-print-meta">
           <p><strong>Date:</strong> ${date}</p>
           <p><strong>Turns:</strong> ${metadata.count}</p>
-          <p><strong>Source:</strong> <a href="${this.escapeHTML(metadata.url)}">Gemini Chat</a></p>
+          <p><strong>Source:</strong> <a href="${this.escapeHTML(metadata.url)}">DeepSeek Chat</a></p>
         </div>
       </header>
     `;
@@ -218,7 +221,7 @@ export class PDFPrintService {
   private static renderFooter(metadata: ConversationMetadata): string {
     return `
       <footer class="gv-print-footer">
-        <p>Exported from <a href="https://github.com/Nagi-ovo/gemini-voyager">Gemini Voyager</a></p>
+        <p>Exported from DeepSeek Voyager</p>
         <p>Generated on ${this.formatDate(metadata.exportedAt)}</p>
       </footer>
     `;
@@ -432,14 +435,14 @@ export class PDFPrintService {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
-      const match = pathname.match(/\/(app|chat)\/([^/]+)/);
+      const match = pathname.match(/\/a\/chat\/s\/([^/]+)/);
       if (match) {
-        const id = match[2];
-        return `Gemini Conversation ${id.substring(0, 8)}`;
+        const id = match[1];
+        return `DeepSeek Conversation ${id.substring(0, 8)}`;
       }
-      return 'Gemini Conversation';
+      return 'DeepSeek Conversation';
     } catch {
-      return 'Gemini Conversation';
+      return 'DeepSeek Conversation';
     }
   }
 

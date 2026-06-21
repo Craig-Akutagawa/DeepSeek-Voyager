@@ -93,14 +93,14 @@ describe('Version Management', () => {
 
   describe('isVersionCompatible', () => {
     it('should accept versions meeting minimum requirement', () => {
-      expect(isVersionCompatible('0.7.0', 'gemini-voyager.folders.v1')).toBe(true);
-      expect(isVersionCompatible('0.7.5', 'gemini-voyager.folders.v1')).toBe(true);
-      expect(isVersionCompatible('1.0.0', 'gemini-voyager.folders.v1')).toBe(true);
+      expect(isVersionCompatible('0.1.0', 'deepseek-voyager.folders.v1')).toBe(true);
+      expect(isVersionCompatible('0.1.5', 'deepseek-voyager.folders.v1')).toBe(true);
+      expect(isVersionCompatible('1.0.0', 'deepseek-voyager.folders.v1')).toBe(true);
     });
 
     it('should reject versions below minimum requirement', () => {
-      expect(isVersionCompatible('0.6.9', 'gemini-voyager.folders.v1')).toBe(false);
-      expect(isVersionCompatible('0.5.0', 'gemini-voyager.folders.v1')).toBe(false);
+      expect(isVersionCompatible('0.0.9', 'deepseek-voyager.folders.v1')).toBe(false);
+      expect(isVersionCompatible('0.0.5', 'deepseek-voyager.folders.v1')).toBe(false);
     });
 
     it('should reject unknown format versions', () => {
@@ -108,35 +108,35 @@ describe('Version Management', () => {
     });
 
     it('should handle invalid version strings gracefully', () => {
-      expect(isVersionCompatible('invalid', 'gemini-voyager.folders.v1')).toBe(false);
+      expect(isVersionCompatible('invalid', 'deepseek-voyager.folders.v1')).toBe(false);
     });
   });
 
   describe('isSupportedFormat', () => {
     it('should recognize supported formats', () => {
-      expect(isSupportedFormat('gemini-voyager.folders.v1')).toBe(true);
+      expect(isSupportedFormat('deepseek-voyager.folders.v1')).toBe(true);
     });
 
     it('should reject unsupported formats', () => {
       expect(isSupportedFormat('unknown.format')).toBe(false);
-      expect(isSupportedFormat('gemini-voyager.folders.v2')).toBe(false);
+      expect(isSupportedFormat('deepseek-voyager.folders.v2')).toBe(false);
       expect(isSupportedFormat('')).toBe(false);
     });
   });
 
   describe('getCompatibilityInfo', () => {
     it('should return compatible info for valid versions', () => {
-      const info = getCompatibilityInfo('0.7.5', 'gemini-voyager.folders.v1');
+      const info = getCompatibilityInfo('0.1.5', 'deepseek-voyager.folders.v1');
       expect(info.compatible).toBe(true);
       expect(info.currentVersion).toBe(EXTENSION_VERSION);
-      expect(info.importVersion).toBe('0.7.5');
-      expect(info.formatVersion).toBe('gemini-voyager.folders.v1');
-      expect(info.minRequiredVersion).toBe('0.7.0');
+      expect(info.importVersion).toBe('0.1.5');
+      expect(info.formatVersion).toBe('deepseek-voyager.folders.v1');
+      expect(info.minRequiredVersion).toBe('0.1.0');
       expect(info.reason).toBeUndefined();
     });
 
     it('should return incompatible info for old versions', () => {
-      const info = getCompatibilityInfo('0.6.0', 'gemini-voyager.folders.v1');
+      const info = getCompatibilityInfo('0.0.6', 'deepseek-voyager.folders.v1');
       expect(info.compatible).toBe(false);
       expect(info.reason).toContain('below minimum required version');
     });
@@ -148,7 +148,7 @@ describe('Version Management', () => {
     });
 
     it('should handle invalid version strings', () => {
-      const info = getCompatibilityInfo('invalid', 'gemini-voyager.folders.v1');
+      const info = getCompatibilityInfo('invalid', 'deepseek-voyager.folders.v1');
       expect(info.compatible).toBe(false);
       expect(info.reason).toContain('Invalid version format');
     });
@@ -157,14 +157,14 @@ describe('Version Management', () => {
   describe('applyMigrations', () => {
     it('should return data unchanged when no migrations apply', () => {
       const data = { test: 'data' };
-      const result = applyMigrations(data, '0.7.0');
+      const result = applyMigrations(data, '0.1.0');
       expect(result.data).toEqual(data);
       expect(result.migrationsApplied).toHaveLength(0);
     });
 
     it('should handle data without throwing', () => {
       const data = { folders: [], folderContents: {} };
-      expect(() => applyMigrations(data, '0.7.0')).not.toThrow();
+      expect(() => applyMigrations(data, '0.1.0')).not.toThrow();
     });
 
     // Note: Add specific migration tests when migrations are implemented
@@ -193,7 +193,7 @@ describe('Version Management', () => {
     });
 
     it('should include v1 format', () => {
-      expect(FORMAT_VERSIONS['gemini-voyager.folders.v1']).toBeDefined();
+      expect(FORMAT_VERSIONS['deepseek-voyager.folders.v1']).toBeDefined();
     });
   });
 
@@ -212,7 +212,7 @@ describe('Version Management', () => {
 
   describe('Real-world Scenarios', () => {
     it('should handle current extension version compatibility', () => {
-      const info = getCompatibilityInfo(EXTENSION_VERSION, 'gemini-voyager.folders.v1');
+      const info = getCompatibilityInfo(EXTENSION_VERSION, 'deepseek-voyager.folders.v1');
       expect(info.compatible).toBe(true);
     });
 
@@ -220,20 +220,19 @@ describe('Version Management', () => {
       // This test ensures we don't break if someone tries to import from a newer version
       // The system should handle it gracefully (though we may want to add warnings)
       const futureVersion = '99.0.0';
-      const info = getCompatibilityInfo(futureVersion, 'gemini-voyager.folders.v1');
+      const info = getCompatibilityInfo(futureVersion, 'deepseek-voyager.folders.v1');
       expect(info.compatible).toBe(true); // Future versions are compatible
     });
 
     it('should handle version ranges correctly', () => {
-      const versions = ['0.6.9', '0.7.0', '0.7.1', '0.7.7', '0.8.0', '1.0.0'];
-      const format = 'gemini-voyager.folders.v1';
-      
+      const versions = ['0.0.9', '0.1.0', '0.1.1', '0.1.7', '0.2.0', '1.0.0'];
+      const format = 'deepseek-voyager.folders.v1';
+
       versions.forEach((version) => {
         const compatible = isVersionCompatible(version, format);
-        const shouldBeCompatible = compareVersions(version, '0.7.0') >= 0;
+        const shouldBeCompatible = compareVersions(version, '0.1.0') >= 0;
         expect(compatible).toBe(shouldBeCompatible);
       });
     });
   });
 });
-

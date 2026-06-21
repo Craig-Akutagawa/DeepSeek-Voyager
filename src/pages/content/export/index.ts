@@ -1,449 +1,551 @@
-// Static imports to avoid CSP issues with dynamic imports in content scripts
 import { ConversationExportService } from '../../../features/export/services/ConversationExportService';
-import { ExportDialog } from '../../../features/export/ui/ExportDialog';
+import { ExportFormat } from '../../../features/export/types/export';
+import {
+  buildDeepSeekMetadata,
+  canExportCurrentRoute,
+  collectDeepSeekConversation,
+  type DeepSeekChatTurn,
+} from './deepseekConversation';
 
-function hashString(input: string): string {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(36);
-}
+const LOG_PREFIX = '[DeepSeek Voyager][Export]';
+const EXPORT_BUTTON_ID = 'deepseek-voyager-export-button';
+const EXPORT_HOST_ID = 'deepseek-voyager-export-host';
+const EXPORT_POSITION_KEY = 'deepseekVoyagerExportButtonPosition';
 
-function waitForElement(selector: string, timeoutMs: number = 6000): Promise<Element | null> {
-  return new Promise((resolve) => {
-    const el = document.querySelector(selector);
-    if (el) return resolve(el);
-    const obs = new MutationObserver(() => {
-      const found = document.querySelector(selector);
-      if (found) {
-        try { obs.disconnect(); } catch {}
-        resolve(found);
-      }
-    });
-    try { obs.observe(document.body, { childList: true, subtree: true }); } catch {}
-    if (timeoutMs > 0) setTimeout(() => { try { obs.disconnect(); } catch {}; resolve(null); }, timeoutMs);
-  });
-}
+type Language = 'en' | 'zh';
+type Dictionary = Record<Language, Record<string, string>>;
+type SelectableExportFormat = ExportFormat.MARKDOWN | ExportFormat.JSON;
 
-function normalizeText(text: string | null): string {
-  try { return String(text || '').replace(/\s+/g, ' ').trim(); } catch { return ''; }
-}
-
-// Note: cleaning of thinking toggles is handled at DOM level in extractAssistantText
-
-function filterTopLevel(elements: Element[]): HTMLElement[] {
-  const arr = elements.map((e) => e as HTMLElement);
-  const out: HTMLElement[] = [];
-  for (let i = 0; i < arr.length; i++) {
-    const el = arr[i];
-    let isDescendant = false;
-    for (let j = 0; j < arr.length; j++) {
-      if (i === j) continue;
-      const other = arr[j];
-      if (other.contains(el)) { isDescendant = true; break; }
-    }
-    if (!isDescendant) out.push(el);
-  }
-  return out;
-}
-
-function getConversationRoot(): HTMLElement {
-  return (document.querySelector('main') as HTMLElement) || (document.body as HTMLElement);
-}
-
-function computeConversationId(): string {
-  const raw = `${location.host}${location.pathname}${location.search}`;
-  return `gemini:${hashString(raw)}`;
-}
-
-function getUserSelectors(): string[] {
-  const configured = (() => {
-    try { return localStorage.getItem('geminiTimelineUserTurnSelector') || localStorage.getItem('geminiTimelineUserTurnSelectorAuto') || ''; } catch { return ''; }
-  })();
-  const defaults = [
-    '.user-query-bubble-with-background',
-    '.user-query-bubble-container',
-    '.user-query-container',
-    'user-query-content .user-query-bubble-with-background',
-    'div[aria-label="User message"]',
-    'article[data-author="user"]',
-    'article[data-turn="user"]',
-    '[data-message-author-role="user"]',
-    'div[role="listitem"][data-user="true"]',
-  ];
-  return configured ? [configured, ...defaults.filter((s) => s !== configured)] : defaults;
-}
-
-function getAssistantSelectors(): string[] {
-  return [
-    // Attribute-based roles
-    '[aria-label="Gemini response"]',
-    '[data-message-author-role="assistant"]',
-    '[data-message-author-role="model"]',
-    'article[data-author="assistant"]',
-    'article[data-turn="assistant"]',
-    'article[data-turn="model"]',
-    // Common Gemini containers
-    '.model-response, model-response',
-    '.response-container',
-    'div[role="listitem"]:not([data-user="true"])',
-  ];
-}
-
-function dedupeByTextAndOffset(elements: HTMLElement[], firstTurnOffset: number): HTMLElement[] {
-  const seen = new Set<string>();
-  const out: HTMLElement[] = [];
-  for (const el of elements) {
-    const offsetFromStart = (el.offsetTop || 0) - firstTurnOffset;
-    const key = `${normalizeText(el.textContent || '')}|${Math.round(offsetFromStart)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(el);
-  }
-  return out;
-}
-
-function ensureTurnId(el: Element, index: number): string {
-  const asEl = el as HTMLElement & { dataset?: DOMStringMap & { turnId?: string } };
-  let id = (asEl.dataset && (asEl.dataset as any).turnId) || '';
-  if (!id) {
-    const basis = normalizeText(asEl.textContent || '') || `user-${index}`;
-    id = `u-${index}-${hashString(basis)}`;
-    try { (asEl.dataset as any).turnId = id; } catch {}
-  }
-  return id;
-}
-
-function readStarredSet(): Set<string> {
-  const cid = computeConversationId();
-  try {
-    const raw = localStorage.getItem(`geminiTimelineStars:${cid}`);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.map((x: any) => String(x)));
-  } catch {
-    return new Set();
-  }
-}
-
-function extractAssistantText(el: HTMLElement): string {
-  // Prefer direct text from message container if available (connected to DOM)
-  try {
-    const mc = (el.querySelector('message-content, .markdown, .markdown-main-panel') as HTMLElement | null);
-    if (mc) {
-      const raw = mc.textContent || mc.innerText || '';
-      const txt = normalizeText(raw);
-      if (txt) return txt;
-    }
-  } catch {}
-
-  // Clone and remove reasoning toggles/labels before reading text (detached fallback)
-  const clone = el.cloneNode(true) as HTMLElement;
-  const matchesReasonToggle = (txt: string): boolean => {
-    const s = normalizeText(txt).toLowerCase();
-    if (!s) return false;
-    return (
-      /^(show\s*(thinking|reasoning)|hide\s*(thinking|reasoning))$/i.test(s) ||
-      /^(显示\s*(思路|推理)|隐藏\s*(思路|推理))$/u.test(s)
-    );
-  };
-  const shouldDrop = (node: HTMLElement): boolean => {
-    const role = (node.getAttribute('role') || '').toLowerCase();
-    const aria = (node.getAttribute('aria-label') || '').toLowerCase();
-    const txt = node.textContent || '';
-    if (matchesReasonToggle(txt)) return true;
-    if (role === 'button' && (/thinking|reasoning/i.test(txt) || /思路|推理/u.test(txt))) return true;
-    if (/thinking|reasoning/i.test(aria) || /思路|推理/u.test(aria)) return true;
-    return false;
-  };
-  try {
-    const candidates = clone.querySelectorAll('button, [role="button"], [aria-label], span, div, a');
-    candidates.forEach((n) => {
-      const eln = n as HTMLElement;
-      if (shouldDrop(eln)) eln.remove();
-    });
-  } catch {}
-  const text = normalizeText((clone.innerText || clone.textContent || ''));
-  return text;
-}
-
-type ChatTurn = {
-  user: string;
-  assistant: string;
-  starred: boolean;
-  userElement?: HTMLElement;
-  assistantElement?: HTMLElement;
+const log = {
+  debug(message: string, context?: Record<string, unknown>): void {
+    console.debug(`${LOG_PREFIX} ${message}`, context || '');
+  },
+  info(message: string, context?: Record<string, unknown>): void {
+    console.info(`${LOG_PREFIX} ${message}`, context || '');
+  },
+  warn(message: string, context?: Record<string, unknown>): void {
+    console.warn(`${LOG_PREFIX} ${message}`, context || '');
+  },
+  error(message: string, context?: Record<string, unknown>): void {
+    console.error(`${LOG_PREFIX} ${message}`, context || '');
+  },
 };
 
-function collectChatPairs(): ChatTurn[] {
-  const root = getConversationRoot();
-  const userSelectors = getUserSelectors();
-  const assistantSelectors = getAssistantSelectors();
-  const userNodeList = root.querySelectorAll(userSelectors.join(','));
-  if (!userNodeList || userNodeList.length === 0) return [];
-  let users = filterTopLevel(Array.from(userNodeList));
-  if (users.length === 0) return [];
-
-  const firstOffset = (users[0] as HTMLElement).offsetTop || 0;
-  users = dedupeByTextAndOffset(users, firstOffset);
-  const userOffsets = users.map((el) => (el as HTMLElement).offsetTop || 0);
-
-  const assistantsAll = Array.from(root.querySelectorAll(assistantSelectors.join(',')));
-  const assistants = filterTopLevel(assistantsAll);
-  const assistantOffsets = assistants.map((el) => (el as HTMLElement).offsetTop || 0);
-
-  const starredSet = readStarredSet();
-  const pairs: ChatTurn[] = [];
-  for (let i = 0; i < users.length; i++) {
-    const uEl = users[i] as HTMLElement;
-    const uText = normalizeText(uEl.innerText || uEl.textContent || '');
-    const start = userOffsets[i];
-    const end = i + 1 < userOffsets.length ? userOffsets[i + 1] : Number.POSITIVE_INFINITY;
-    let aText = '';
-    let aEl: HTMLElement | null = null;
-    let bestIdx = -1;
-    let bestOff = Number.POSITIVE_INFINITY;
-    for (let k = 0; k < assistants.length; k++) {
-      const off = assistantOffsets[k];
-      if (off >= start && off < end) {
-        if (off < bestOff) { bestOff = off; bestIdx = k; }
-      }
-    }
-    if (bestIdx >= 0) {
-      aEl = assistants[bestIdx] as HTMLElement;
-      aText = extractAssistantText(aEl);
-    } else {
-      // Fallback: search next siblings up to a small window
-      let sib: HTMLElement | null = uEl;
-      for (let step = 0; step < 8 && sib; step++) {
-        sib = (sib.nextElementSibling as HTMLElement | null);
-        if (!sib) break;
-        if (sib.matches(userSelectors.join(','))) break;
-        if (sib.matches(assistantSelectors.join(','))) {
-          aEl = sib;
-          aText = extractAssistantText(sib);
-          break;
-        }
-      }
-    }
-    const turnId = ensureTurnId(uEl, i);
-    const starred = !!turnId && starredSet.has(turnId);
-    if (uText || aText) {
-      // Prefer a richer assistant container for downstream rich extraction
-      let finalAssistantEl: HTMLElement | undefined = undefined;
-      if (aEl) {
-        const pick =
-          (aEl.querySelector('message-content') as HTMLElement | null) ||
-          (aEl.querySelector('.markdown, .markdown-main-panel') as HTMLElement | null) ||
-          (aEl.closest('.presented-response-container') as HTMLElement | null) ||
-          (aEl.querySelector('.presented-response-container, .response-content') as HTMLElement | null) ||
-          (aEl.querySelector('response-element') as HTMLElement | null) ||
-          aEl;
-        finalAssistantEl = pick || undefined;
-      }
-      pairs.push({
-        user: uText,
-        assistant: aText,
-        starred,
-        userElement: uEl,
-        assistantElement: finalAssistantEl,
-      });
-    }
-  }
-  return pairs;
-}
-
-function downloadJSON(data: any, filename: string): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { try { document.body.removeChild(a); } catch {}; URL.revokeObjectURL(url); }, 0);
-}
-
-function buildExportPayload(pairs: ChatTurn[]) {
-  return {
-    format: 'gemini-voyager.chat.v1',
-    url: location.href,
-    exportedAt: new Date().toISOString(),
-    count: pairs.length,
-    items: pairs,
-  };
-}
-
-function ensureButtonInjected(container: Element): HTMLButtonElement | null {
-  const host = container as HTMLElement;
-  if (!host || host.querySelector('.gv-export-btn')) return host.querySelector('.gv-export-btn') as HTMLButtonElement | null;
-  const btn = document.createElement('button');
-  btn.className = 'gv-export-btn';
-  btn.type = 'button';
-  btn.title = 'Export chat history (JSON)';
-  btn.setAttribute('aria-label', 'Export chat history (JSON)');
-  host.appendChild(btn);
-  return btn;
-}
-
-function formatFilename(): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = pad(d.getMonth() + 1);
-  const day = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const mm = pad(d.getMinutes());
-  const ss = pad(d.getSeconds());
-  return `gemini-chat-${y}${m}${day}-${hh}${mm}${ss}.json`;
-}
-
-async function loadDictionaries(): Promise<Record<'en' | 'zh', Record<string, string>>> {
-  try {
-    const enRaw: any = await import(/* @vite-ignore */ '../../../locales/en/messages.json');
-    const zhRaw: any = await import(/* @vite-ignore */ '../../../locales/zh/messages.json');
-    const extract = (raw: any): Record<string, string> => {
-      const out: Record<string, string> = {};
-      if (raw && typeof raw === 'object') {
-        Object.keys(raw).forEach((k) => {
-          const v = (raw as any)[k];
-          if (v && typeof v.message === 'string') out[k] = v.message;
-        });
-      }
-      return out;
-    };
-    return { en: extract(enRaw), zh: extract(zhRaw) } as any;
-  } catch {
-    return { en: {}, zh: {} } as any;
-  }
-}
-
-function normalizeLang(lang: string | undefined): 'en' | 'zh' {
+function normalizeLang(lang: string | undefined): Language {
   return lang && lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
 
-async function getLanguage(): Promise<'en' | 'zh'> {
+async function loadDictionaries(): Promise<Dictionary> {
   try {
-    const stored = await new Promise<any>((resolve) => {
-      try { (window as any).chrome?.storage?.sync?.get?.('language', resolve); } catch { resolve({}); }
-    });
-    const v = typeof stored?.language === 'string' ? stored.language : undefined;
-    return normalizeLang(v || (navigator.language || 'en'));
-  } catch {
-    return 'en';
+    const enRaw: unknown = await import('../../../locales/en/messages.json');
+    const zhRaw: unknown = await import('../../../locales/zh/messages.json');
+    const extract = (raw: unknown): Record<string, string> => {
+      const source =
+        raw && typeof raw === 'object' && 'default' in raw
+          ? (raw as { default: unknown }).default
+          : raw;
+      const out: Record<string, string> = {};
+
+      if (source && typeof source === 'object') {
+        Object.entries(source as Record<string, { message?: unknown }>).forEach(([key, value]) => {
+          if (typeof value?.message === 'string') out[key] = value.message;
+        });
+      }
+
+      return out;
+    };
+
+    return { en: extract(enRaw), zh: extract(zhRaw) };
+  } catch (error) {
+    log.warn('Failed to load locale dictionaries, using built-in text', { error });
+    return { en: {}, zh: {} };
   }
 }
 
-export async function startExportButton(): Promise<void> {
-  if (location.hostname !== 'gemini.google.com' && location.hostname !== 'aistudio.google.com') return;
-  const logo =
-    (await waitForElement('[data-test-id="logo"]', 6000)) ||
-    (await waitForElement('.logo', 2000));
-  if (!logo) return;
-  const btn = ensureButtonInjected(logo);
-  if (!btn) return;
-  if ((btn as any)._gvBound) return;
-  (btn as any)._gvBound = true;
+async function getLanguage(): Promise<Language> {
+  try {
+    const stored = await new Promise<{ language?: string }>((resolve) => {
+      const getStorage = chrome.storage?.sync?.get as any;
+      if (!getStorage) {
+        resolve({});
+        return;
+      }
+      getStorage('language', resolve);
+    });
 
-  // Swallow events on the button to avoid parent navigation (logo click -> /app)
-  const swallow = (e: Event) => {
-    try { e.preventDefault(); } catch {}
-    try { e.stopPropagation(); } catch {}
+    return normalizeLang(stored?.language || navigator.language);
+  } catch {
+    return normalizeLang(navigator.language);
+  }
+}
+
+function translate(dict: Dictionary, lang: Language, key: string, fallback: string): string {
+  return dict[lang]?.[key] ?? dict.en?.[key] ?? fallback;
+}
+
+function ensureExportButton(): HTMLButtonElement {
+  const existing = document.getElementById(EXPORT_BUTTON_ID);
+  if (existing instanceof HTMLButtonElement) return existing;
+
+  let host = document.getElementById(EXPORT_HOST_ID);
+  if (!host) {
+    host = document.createElement('div');
+    host.id = EXPORT_HOST_ID;
+    host.className = 'dsv-export-button-host';
+    document.body.appendChild(host);
+  }
+
+  const button = document.createElement('button');
+  button.id = EXPORT_BUTTON_ID;
+  button.className = 'gv-export-btn dsv-export-btn';
+  button.type = 'button';
+  host.appendChild(button);
+
+  log.info('Export button mounted', { route: location.pathname });
+  return button;
+}
+
+function readSavedButtonPosition(): { left: number; top: number } | null {
+  try {
+    const raw = localStorage.getItem(EXPORT_POSITION_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed?.left !== 'number' ||
+      typeof parsed?.top !== 'number' ||
+      Number.isNaN(parsed.left) ||
+      Number.isNaN(parsed.top)
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clampButtonPosition(left: number, top: number, host: HTMLElement): { left: number; top: number } {
+  const rect = host.getBoundingClientRect();
+  const width = rect.width || 42;
+  const height = rect.height || 42;
+  const padding = 8;
+
+  return {
+    left: Math.min(Math.max(left, padding), window.innerWidth - width - padding),
+    top: Math.min(Math.max(top, padding), window.innerHeight - height - padding),
   };
-  // Capture low-level press events to avoid parent logo navigation, but do NOT capture 'click'
-  ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach((type) => {
-    try { btn.addEventListener(type, swallow, true); } catch {}
+}
+
+function applyButtonPosition(host: HTMLElement, position: { left: number; top: number }): void {
+  const next = clampButtonPosition(position.left, position.top, host);
+  host.style.left = `${next.left}px`;
+  host.style.top = `${next.top}px`;
+  host.style.right = 'auto';
+  host.style.bottom = 'auto';
+}
+
+function setupDraggableButton(button: HTMLButtonElement): void {
+  const host = document.getElementById(EXPORT_HOST_ID);
+  if (!(host instanceof HTMLElement)) return;
+  if (button.dataset.dsvDraggable === '1') return;
+  button.dataset.dsvDraggable = '1';
+
+  const savedPosition = readSavedButtonPosition();
+  if (savedPosition) applyButtonPosition(host, savedPosition);
+
+  let dragState:
+    | {
+        pointerId: number;
+        startX: number;
+        startY: number;
+        startLeft: number;
+        startTop: number;
+        moved: boolean;
+      }
+    | null = null;
+
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+
+    const rect = host.getBoundingClientRect();
+    dragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      moved: false,
+    };
+    button.setPointerCapture(event.pointerId);
   });
 
-  // i18n setup for tooltip
-  const dict = await loadDictionaries();
-  const lang = await getLanguage();
-  const t = (key: string) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
-  const title = t('exportChatJson');
-  btn.title = title;
-  btn.setAttribute('aria-label', title);
+  button.addEventListener('pointermove', (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
 
-  // listen for runtime language changes
-  const storageChangeHandler = (changes: any, area: string) => {
-    if (area !== 'sync') return;
-    if (changes?.language) {
-      const next = normalizeLang(changes.language.newValue);
-      const ttl = (dict[next]?.['exportChatJson'] ?? dict.en?.['exportChatJson'] ?? 'Export chat history (JSON)');
-      btn.title = ttl;
-      btn.setAttribute('aria-label', ttl);
+    const dx = event.clientX - dragState.startX;
+    const dy = event.clientY - dragState.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) dragState.moved = true;
+    if (!dragState.moved) return;
+
+    event.preventDefault();
+    applyButtonPosition(host, {
+      left: dragState.startLeft + dx,
+      top: dragState.startTop + dy,
+    });
+  });
+
+  const finishDrag = (event: PointerEvent) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+    const wasMoved = dragState.moved;
+    dragState = null;
+
+    try {
+      button.releasePointerCapture(event.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    if (wasMoved) {
+      const rect = host.getBoundingClientRect();
+      const position = clampButtonPosition(rect.left, rect.top, host);
+      localStorage.setItem(EXPORT_POSITION_KEY, JSON.stringify(position));
+      button.dataset.dsvSuppressClick = '1';
+      window.setTimeout(() => {
+        delete button.dataset.dsvSuppressClick;
+      }, 0);
+      log.info('Export button position saved', position);
     }
   };
 
-  try {
-    chrome.storage?.onChanged?.addListener(storageChangeHandler);
-
-    // Cleanup listener on page unload to prevent memory leaks
-    window.addEventListener('beforeunload', () => {
-      try {
-        chrome.storage?.onChanged?.removeListener(storageChangeHandler);
-      } catch (e) {
-        console.error('[Gemini Voyager] Failed to remove storage listener on unload:', e);
-      }
-    }, { once: true });
-  } catch {}
-
-  btn.addEventListener('click', (ev) => {
-    // Stop parent navigation, but allow this handler to run
-    swallow(ev);
-    try {
-      // Show export dialog instead of directly exporting
-      showExportDialog(dict, lang);
-    } catch (err) {
-      try { console.error('Gemini Voyager export failed', err); } catch {}
-    }
+  button.addEventListener('pointerup', finishDrag);
+  button.addEventListener('pointercancel', finishDrag);
+  window.addEventListener('resize', () => {
+    const saved = readSavedButtonPosition();
+    if (saved) applyButtonPosition(host, saved);
   });
 }
 
-async function showExportDialog(dict: Record<'en' | 'zh', Record<string, string>>, lang: 'en' | 'zh'): Promise<void> {
-  const t = (key: string) => dict[lang]?.[key] ?? dict.en?.[key] ?? key;
+function updateButtonVisibility(button: HTMLButtonElement): void {
+  const host = document.getElementById(EXPORT_HOST_ID);
+  const visible = canExportCurrentRoute();
+  if (host) host.hidden = !visible;
+  button.disabled = !visible;
+  log.debug('Export button visibility updated', {
+    visible,
+    pathname: location.pathname,
+  });
+}
 
-  // Collect conversation data BEFORE showing dialog to avoid page state changes
-  const pairs = collectChatPairs();
-  const metadata = {
-    url: location.href,
-    exportedAt: new Date().toISOString(),
-    count: pairs.length,
+function getTurnPreview(turn: DeepSeekChatTurn, index: number): string {
+  const source = turn.user || turn.assistant || `Turn ${index + 1}`;
+  return source.replace(/\s+/g, ' ').trim().slice(0, 110);
+}
+
+function createFormatOption(format: SelectableExportFormat, label: string, checked: boolean): HTMLLabelElement {
+  const option = document.createElement('label');
+  option.className = 'dsv-export-format-option';
+
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.name = 'dsv-export-format';
+  input.value = format;
+  input.checked = checked;
+
+  const text = document.createElement('span');
+  text.textContent = label;
+
+  option.appendChild(input);
+  option.appendChild(text);
+  return option;
+}
+
+function showSelectableExportDialog(options: {
+  turns: DeepSeekChatTurn[];
+  dict: Dictionary;
+  lang: Language;
+  onExport: (turns: DeepSeekChatTurn[], format: SelectableExportFormat) => Promise<void>;
+}): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'dsv-export-dialog-overlay';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'dsv-export-dialog';
+  dialog.tabIndex = -1;
+
+  const title = document.createElement('div');
+  title.className = 'dsv-export-dialog-title';
+  title.textContent = translate(options.dict, options.lang, 'export_dialog_title', 'Export Conversation');
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'dsv-export-dialog-subtitle';
+  subtitle.textContent =
+    options.lang === 'zh' ? '选择要导出的对话轮次和格式。' : 'Select turns and an export format.';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'dsv-export-dialog-toolbar';
+
+  const selectAllLabel = document.createElement('label');
+  selectAllLabel.className = 'dsv-export-select-all';
+
+  const selectAll = document.createElement('input');
+  selectAll.type = 'checkbox';
+  selectAll.checked = true;
+
+  const selectAllText = document.createElement('span');
+  selectAllText.textContent = options.lang === 'zh' ? '全选' : 'Select all';
+
+  selectAllLabel.appendChild(selectAll);
+  selectAllLabel.appendChild(selectAllText);
+  toolbar.appendChild(selectAllLabel);
+
+  const countLabel = document.createElement('span');
+  countLabel.className = 'dsv-export-count';
+  toolbar.appendChild(countLabel);
+
+  const turnList = document.createElement('div');
+  turnList.className = 'dsv-export-turn-list';
+
+  const checkboxes: HTMLInputElement[] = [];
+  options.turns.forEach((turn, index) => {
+    const item = document.createElement('label');
+    item.className = 'dsv-export-turn-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = turn.turnId;
+    checkbox.checked = true;
+    checkboxes.push(checkbox);
+
+    const content = document.createElement('span');
+    content.className = 'dsv-export-turn-content';
+
+    const heading = document.createElement('span');
+    heading.className = 'dsv-export-turn-heading';
+    heading.textContent = `Turn ${index + 1}`;
+
+    const preview = document.createElement('span');
+    preview.className = 'dsv-export-turn-preview';
+    preview.textContent = getTurnPreview(turn, index);
+
+    content.appendChild(heading);
+    content.appendChild(preview);
+    item.appendChild(checkbox);
+    item.appendChild(content);
+    turnList.appendChild(item);
+  });
+
+  const formatGroup = document.createElement('div');
+  formatGroup.className = 'dsv-export-format-list';
+  formatGroup.appendChild(createFormatOption(ExportFormat.MARKDOWN, 'Markdown', true));
+  formatGroup.appendChild(createFormatOption(ExportFormat.JSON, 'JSON', false));
+
+  const buttons = document.createElement('div');
+  buttons.className = 'gv-export-dialog-buttons';
+
+  const cancelButton = document.createElement('button');
+  cancelButton.type = 'button';
+  cancelButton.className = 'gv-export-dialog-btn gv-export-dialog-btn-secondary';
+  cancelButton.textContent = translate(options.dict, options.lang, 'pm_cancel', 'Cancel');
+
+  const exportButton = document.createElement('button');
+  exportButton.type = 'button';
+  exportButton.className = 'gv-export-dialog-btn gv-export-dialog-btn-primary';
+  exportButton.textContent = translate(options.dict, options.lang, 'pm_export', 'Export');
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', handleEscape);
   };
 
-  const dialog = new ExportDialog();
+  const updateCount = () => {
+    const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
+    countLabel.textContent =
+      options.lang === 'zh'
+        ? `已选择 ${selected} / ${checkboxes.length}`
+        : `${selected} / ${checkboxes.length} selected`;
+    selectAll.checked = selected === checkboxes.length;
+    selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+    exportButton.disabled = selected === 0;
+  };
 
-  dialog.show({
-    onExport: async (format) => {
+  const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') close();
+  };
+
+  checkboxes.forEach((checkbox) => checkbox.addEventListener('change', updateCount));
+  selectAll.addEventListener('change', () => {
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = selectAll.checked;
+    });
+    updateCount();
+  });
+
+  cancelButton.addEventListener('click', close);
+  exportButton.addEventListener('click', () => {
+    const selectedIds = new Set(
+      checkboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value)
+    );
+    const selectedTurns = options.turns.filter((turn) => selectedIds.has(turn.turnId));
+    const formatInput = dialog.querySelector<HTMLInputElement>('input[name="dsv-export-format"]:checked');
+    const format = (formatInput?.value || ExportFormat.MARKDOWN) as SelectableExportFormat;
+
+    close();
+    void options.onExport(selectedTurns, format);
+  });
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) close();
+  });
+  document.addEventListener('keydown', handleEscape);
+
+  buttons.appendChild(cancelButton);
+  buttons.appendChild(exportButton);
+
+  dialog.appendChild(title);
+  dialog.appendChild(subtitle);
+  dialog.appendChild(toolbar);
+  dialog.appendChild(turnList);
+  dialog.appendChild(formatGroup);
+  dialog.appendChild(buttons);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  updateCount();
+  dialog.focus();
+}
+
+async function showExportDialog(dict: Dictionary, lang: Language): Promise<void> {
+  log.info('Opening export dialog', { url: location.href });
+
+  const turns = collectDeepSeekConversation(log);
+  log.info('Conversation collected for export dialog', { count: turns.length });
+
+  if (turns.length === 0) {
+    log.warn('Export aborted because no turns were found');
+    return;
+  }
+
+  showSelectableExportDialog({
+    turns,
+    dict,
+    lang,
+    onExport: async (selectedTurns, format) => {
       try {
-        // Use pre-collected conversation data
-        const result = await ConversationExportService.export(pairs, metadata, {
-          format: format as any,
+        log.info('Export requested', { format, selectedCount: selectedTurns.length });
+        const metadata = buildDeepSeekMetadata(selectedTurns);
+        log.info('Selected conversation turns prepared for export', {
+          format,
+          count: selectedTurns.length,
+          title: metadata.title,
+        });
+
+        if (selectedTurns.length === 0) {
+          log.warn('Export aborted because no selected turns were found');
+          return;
+        }
+
+        const result = await ConversationExportService.export(selectedTurns, metadata, {
+          format,
         });
 
         if (result.success) {
-          console.log(`[Gemini Voyager] Exported ${result.format} successfully`);
+          log.info('Export completed', {
+            format: result.format,
+            filename: result.filename,
+          });
         } else {
-          console.error(`[Gemini Voyager] Export failed: ${result.error}`);
+          log.error('Export failed', {
+            format: result.format,
+            error: result.error,
+          });
         }
-      } catch (err) {
-        console.error('[Gemini Voyager] Export error:', err);
+      } catch (error) {
+        log.error('Unhandled export error', { error });
       }
     },
-    onCancel: () => {
-      // Dialog closed
-    },
-    translations: {
-      title: t('export_dialog_title'),
-      selectFormat: t('export_dialog_select'),
-      cancel: t('pm_cancel'),
-      export: t('pm_export'),
-    },
+  });
+}
+
+function watchRouteChanges(onChange: () => void): void {
+  let lastHref = location.href;
+  const notifyIfChanged = () => {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    log.info('Route changed', { href: lastHref });
+    onChange();
+  };
+
+  ['pushState', 'replaceState'].forEach((methodName) => {
+    const historyApi = history as unknown as Record<string, (...args: any[]) => unknown>;
+    const original = historyApi[methodName];
+    historyApi[methodName] = function patchedHistoryMethod(this: History, ...args: any[]) {
+      const result = original.apply(this, args);
+      window.setTimeout(notifyIfChanged, 0);
+      return result;
+    };
+  });
+
+  window.addEventListener('popstate', notifyIfChanged);
+}
+
+export async function startExportButton(): Promise<void> {
+  if (location.hostname !== 'chat.deepseek.com') {
+    log.debug('Skipped export initialization on unsupported host', { hostname: location.hostname });
+    return;
+  }
+
+  log.info('Initializing export feature');
+  const dict = await loadDictionaries();
+  let lang = await getLanguage();
+  const button = ensureExportButton();
+  setupDraggableButton(button);
+  const refreshButton = () => updateButtonVisibility(button);
+
+  const setButtonText = () => {
+    const title = translate(dict, lang, 'exportChatJson', 'Export chat history');
+    button.title = title;
+    button.setAttribute('aria-label', title);
+  };
+
+  setButtonText();
+  refreshButton();
+  watchRouteChanges(refreshButton);
+
+  try {
+    chrome.storage?.onChanged?.addListener((changes, area) => {
+      if (area !== 'sync' || typeof changes?.language?.newValue !== 'string') return;
+      lang = normalizeLang(changes.language.newValue);
+      setButtonText();
+      log.info('Export language updated', { lang });
+    });
+  } catch (error) {
+    log.warn('Unable to subscribe to language changes', { error });
+  }
+
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (button.dataset.dsvSuppressClick === '1') {
+      log.debug('Suppressed click after drag');
+      return;
+    }
+
+    if (!canExportCurrentRoute()) {
+      log.warn('Export button clicked outside a conversation route', {
+        pathname: location.pathname,
+      });
+      return;
+    }
+
+    void showExportDialog(dict, lang);
+  });
+
+  log.info('Export feature initialized', {
+    formats: [ExportFormat.MARKDOWN, ExportFormat.JSON],
   });
 }
 
 export default { startExportButton };
-
-

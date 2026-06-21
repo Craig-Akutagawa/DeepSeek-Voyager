@@ -17,7 +17,7 @@ export const EXTENSION_VERSION = manifestChrome.version;
  * Maps format version to minimum compatible extension version
  */
 export const FORMAT_VERSIONS = {
-  'gemini-voyager.folders.v1': '0.7.0', // Minimum version that supports v1 format
+  'deepseek-voyager.folders.v1': '0.1.0', // Minimum version that supports v1 format
 } as const;
 
 export type FormatVersion = keyof typeof FORMAT_VERSIONS;
@@ -138,7 +138,7 @@ export interface CompatibilityInfo {
  */
 export function getCompatibilityInfo(
   importVersion: string,
-  formatVersion: string,
+  formatVersion: string
 ): CompatibilityInfo {
   const info: CompatibilityInfo = {
     compatible: false,
@@ -208,7 +208,10 @@ export const VERSION_MIGRATIONS: VersionMigration[] = [
 /**
  * Apply necessary migrations to bring data up to current version
  */
-export function applyMigrations(data: any, fromVersion: string): { data: any; migrationsApplied: string[] } {
+export function applyMigrations(
+  data: any,
+  fromVersion: string
+): { data: any; migrationsApplied: string[] } {
   let currentData = data;
   const migrationsApplied: string[] = [];
 
@@ -220,13 +223,16 @@ export function applyMigrations(data: any, fromVersion: string): { data: any; mi
     ) {
       try {
         currentData = migration.migrate(currentData);
-        migrationsApplied.push(`${migration.fromVersion} → ${migration.toVersion}: ${migration.description}`);
+        migrationsApplied.push(
+          `${migration.fromVersion} → ${migration.toVersion}: ${migration.description}`
+        );
       } catch (error) {
-        throw new Error(`Migration failed (${migration.fromVersion} → ${migration.toVersion}): ${error}`);
+        throw new Error(
+          `Migration failed (${migration.fromVersion} → ${migration.toVersion}): ${error}`
+        );
       }
     }
   }
 
   return { data: currentData, migrationsApplied };
 }
-

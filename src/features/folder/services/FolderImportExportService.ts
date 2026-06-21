@@ -23,7 +23,7 @@ import {
   applyMigrations,
 } from '@/core/utils/version';
 
-const EXPORT_FORMAT: FormatVersion = 'gemini-voyager.folders.v1' as const;
+const EXPORT_FORMAT: FormatVersion = 'deepseek-voyager.folders.v1' as const;
 
 /**
  * Service for handling folder import/export operations
@@ -176,7 +176,10 @@ export class FolderImportExportService {
    * Merge imported data with existing data
    * Skips duplicate folders (by ID) and conversations (by conversationId)
    */
-  static mergeData(existing: FolderData, imported: FolderData): { merged: FolderData; stats: ImportResult } {
+  static mergeData(
+    existing: FolderData,
+    imported: FolderData
+  ): { merged: FolderData; stats: ImportResult } {
     const existingFolderIds = new Set(existing.folders.map((f) => f.id));
     const newFolders: Folder[] = [];
     let duplicatesFoldersSkipped = 0;
@@ -233,13 +236,13 @@ export class FolderImportExportService {
    * @param currentData - Current folder data
    * @param options - Import options (strategy, backup)
    * @returns Result with import statistics
-   * 
+   *
    * Note: This method should be called through importFromPayloadWithLock for concurrency protection
    */
   private static importFromPayloadInternal(
     payload: FolderExportPayload,
     currentData: FolderData,
-    options: ImportOptions,
+    options: ImportOptions
   ): Result<{ data: FolderData; stats: ImportResult }> {
     try {
       const { strategy, createBackup = true } = options;
@@ -247,13 +250,13 @@ export class FolderImportExportService {
       // Apply any necessary data migrations
       let importData = payload.data;
       const migrationsApplied: string[] = [];
-      
+
       if (payload.version) {
         try {
           const migrationResult = applyMigrations(payload.data, payload.version);
           importData = migrationResult.data;
           migrationsApplied.push(...migrationResult.migrationsApplied);
-          
+
           if (migrationsApplied.length > 0) {
             console.log('Applied migrations:', migrationsApplied);
           }
@@ -283,7 +286,7 @@ export class FolderImportExportService {
 
         const totalConversations = Object.values(importData.folderContents).reduce(
           (sum, convs) => sum + convs.length,
-          0,
+          0
         );
 
         stats = {
@@ -335,7 +338,7 @@ export class FolderImportExportService {
   static async importFromPayload(
     payload: FolderExportPayload,
     currentData: FolderData,
-    options: ImportOptions,
+    options: ImportOptions
   ): Promise<Result<{ data: FolderData; stats: ImportResult }>> {
     // Use lock to prevent concurrent imports
     return await importExportLock.withLock(
@@ -357,7 +360,7 @@ export class FolderImportExportService {
     const hh = pad(d.getHours());
     const mm = pad(d.getMinutes());
     const ss = pad(d.getSeconds());
-    return `gemini-voyager-folders-${y}${m}${day}-${hh}${mm}${ss}.json`;
+    return `deepseek-voyager-folders-${y}${m}${day}-${hh}${mm}${ss}.json`;
   }
 
   /**
@@ -396,7 +399,9 @@ export class FolderImportExportService {
     } catch (error) {
       return {
         success: false,
-        error: new AppError(ErrorCode.VALIDATION_ERROR, 'Failed to parse JSON file', { originalError: error }),
+        error: new AppError(ErrorCode.VALIDATION_ERROR, 'Failed to parse JSON file', {
+          originalError: error,
+        }),
       };
     }
   }
@@ -422,7 +427,9 @@ export class FolderImportExportService {
     } catch (error) {
       return {
         success: false,
-        error: new AppError(ErrorCode.UNKNOWN_ERROR, 'Failed to restore backup', { originalError: error }),
+        error: new AppError(ErrorCode.UNKNOWN_ERROR, 'Failed to restore backup', {
+          originalError: error,
+        }),
       };
     }
   }

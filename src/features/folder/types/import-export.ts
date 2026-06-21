@@ -8,7 +8,7 @@ import type { FolderData } from '@/core/types/folder';
  * Export payload format with versioning
  */
 export interface FolderExportPayload {
-  format: 'gemini-voyager.folders.v1';
+  format: 'deepseek-voyager.folders.v1';
   exportedAt: string; // ISO 8601 timestamp
   version: string; // Extension version
   data: FolderData;

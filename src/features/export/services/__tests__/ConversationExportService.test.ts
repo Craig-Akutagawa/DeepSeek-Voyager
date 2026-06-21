@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ChatTurn, ConversationMetadata } from '../../types/export';
 import { ConversationExportService } from '../ConversationExportService';
 
-
 // Setup DOM environment
 
 const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
@@ -17,7 +16,7 @@ global.window = dom.window as any;
 
 describe('ConversationExportService', () => {
   const mockMetadata: ConversationMetadata = {
-    url: 'https://gemini.google.com/app/test',
+    url: 'https://chat.deepseek.com/a/chat/s/12345678-1234-1234-1234-123456789abc',
     exportedAt: '2025-01-15T10:30:00.000Z',
     count: 2,
   };
@@ -140,8 +139,8 @@ describe('ConversationExportService', () => {
     it('should return all available formats', () => {
       const formats = ConversationExportService.getAvailableFormats();
 
-      expect(formats).toHaveLength(3);
-      expect(formats.map((f) => f.format)).toEqual(['json', 'markdown', 'pdf']);
+      expect(formats).toHaveLength(2);
+      expect(formats.map((f) => f.format)).toEqual(['markdown', 'json']);
     });
 
     it('should mark Markdown as recommended', () => {
