@@ -143,9 +143,11 @@ If the extension stops working after a DeepSeek update, please open an issue wit
 
 ---
 
-## 🙏 Credits
+## 🙏 Credits & Forks
 
-- Adapted from [Gemini Voyager](https://github.com/Nagi-ovo/gemini-voyager) by Jesse Zhang
+- Maintained Fork: [Craig-Akutagawa/DeepSeek-Voyager](https://github.com/Craig-Akutagawa/DeepSeek-Voyager)
+- Original Adaptation: [Azurboy/deepseek-voyager](https://github.com/Azurboy/deepseek-voyager) by Jesse Zhang
+- Original Project: [Gemini Voyager](https://github.com/Nagi-ovo/gemini-voyager) by [Nagi-ovo](https://github.com/Nagi-ovo)
 - Inspired by [ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)
 
 ---
