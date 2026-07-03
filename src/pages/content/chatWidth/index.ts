@@ -139,7 +139,7 @@ export function startChatWidthAdjuster() {
 
   // Load initial width
   chrome.storage?.sync?.get({ geminiChatWidth: 800 }, (res) => {
-    currentWidth = res?.geminiChatWidth || 800;
+    currentWidth = (res as any)?.geminiChatWidth || 800;
     applyWidth(currentWidth);
   });
 

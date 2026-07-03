@@ -70,6 +70,7 @@ To add support for a new Gem (official Google Gems or custom Gems):
 ### Choosing an Icon
 
 Icons should be valid [Google Material Symbols](https://fonts.google.com/icons) icon names. Common examples:
+
 - `auto_stories` - Learning Coach
 - `lightbulb` - Brainstorm Buddy
 - `work` - Career Guide
@@ -114,6 +115,7 @@ export const GEM_CONFIG: GemConfig[] = [
 ### 选择图标
 
 图标应为有效的 [Google Material Symbols](https://fonts.google.com/icons) 图标名称。常见示例：
+
 - `auto_stories` - 学习教练
 - `lightbulb` - 头脑风暴伙伴
 - `work` - 职业指导

@@ -1,3 +1,6 @@
+import { eventBus } from './EventBus';
+import { StarredMessagesService } from './StarredMessagesService';
+import type { StarredMessage } from './starredTypes';
 import { DotElement } from './types';
 
 function hashString(input: string): string {
@@ -82,6 +85,8 @@ export class TimelineManager {
   private zeroTurnsTimer: number | null = null;
   private onStorage: ((e: StorageEvent) => void) | null = null;
   private starred: Set<string> = new Set();
+  private starredAtMap: Map<string, number> = new Map();
+  private eventBusUnsubscribers: Array<() => void> = [];
   private markerMap: Map<
     string,
     {
@@ -144,15 +149,53 @@ export class TimelineManager {
     console.log('[Timeline] init: 准备 setupObservers');
     this.setupObservers();
     this.conversationId = this.computeConversationId();
-    this.loadStars();
+    await this.loadStars();
+    
+    // Subscribe to EventBus for cross-component starred state synchronization
+    this.eventBusUnsubscribers.push(
+      eventBus.on('starred:removed', ({ conversationId, turnId }) => {
+        if (conversationId !== this.conversationId) return;
+        if (this.starred.has(turnId)) {
+          this.starred.delete(turnId);
+          this.starredAtMap.delete(turnId);
+          const marker = this.markerMap.get(turnId);
+          if (marker && marker.dotElement) {
+            marker.starred = false;
+            marker.dotElement.classList.remove('starred');
+            marker.dotElement.setAttribute('aria-pressed', 'false');
+          }
+          this.recalculateAndRenderMarkers();
+        }
+      })
+    );
+
+    this.eventBusUnsubscribers.push(
+      eventBus.on('starred:added', ({ conversationId, turnId }) => {
+        if (conversationId !== this.conversationId) return;
+        if (!this.starred.has(turnId)) {
+          this.starred.add(turnId);
+          this.starredAtMap.set(turnId, Date.now());
+          const marker = this.markerMap.get(turnId);
+          if (marker && marker.dotElement) {
+            marker.starred = true;
+            marker.dotElement.classList.add('starred');
+            marker.dotElement.setAttribute('aria-pressed', 'true');
+          }
+          this.recalculateAndRenderMarkers();
+        }
+      })
+    );
+
+    this.handleStarredMessageNavigation();
+
     try {
       // prefer chrome.storage if available to sync with popup
       if ((window as any).chrome?.storage?.sync) {
         (window as any).chrome.storage.sync.get(
           {
             deepseekTimelineScrollMode: 'flow',
-            deepseekTimelineHideContainer: false,
-            deepseekTimelineDraggable: false,
+            deepseekTimelineHideContainer: true,
+            deepseekTimelineDraggable: true,
             deepseekTimelinePosition: null,
           },
           (res: any) => {
@@ -1613,12 +1656,40 @@ export class TimelineManager {
     this.tooltipHideTimer = window.setTimeout(doHide, this.tooltipHideDelay);
   }
 
-  private toggleStar(turnId: string): void {
+  private async toggleStar(turnId: string): Promise<void> {
     const id = String(turnId || '');
     if (!id) return;
-    if (this.starred.has(id)) this.starred.delete(id);
-    else this.starred.add(id);
+
+    const wasStarred = this.starred.has(id);
+    if (wasStarred) {
+      this.starred.delete(id);
+      this.starredAtMap.delete(id);
+    } else {
+      this.starred.add(id);
+    }
+
     this.saveStars();
+
+    if (wasStarred) {
+      await StarredMessagesService.removeStarredMessage(this.conversationId!, id);
+    } else {
+      const m = this.markerMap.get(id);
+      if (m) {
+        const conversationTitle = this.getConversationTitle();
+        const now = Date.now();
+        const message: StarredMessage = {
+          turnId: id,
+          content: m.summary,
+          conversationId: this.conversationId!,
+          conversationUrl: window.location.href,
+          conversationTitle,
+          starredAt: now,
+        };
+        this.starredAtMap.set(id, now);
+        await StarredMessagesService.addStarredMessage(message);
+      }
+    }
+
     const m = this.markerMap.get(id);
     if (m && m.dotElement) {
       const isStarredNow = this.starred.has(id);
@@ -1627,6 +1698,7 @@ export class TimelineManager {
       m.dotElement.setAttribute('aria-pressed', isStarredNow ? 'true' : 'false');
       this.refreshTooltipForDot(m.dotElement);
     }
+    this.recalculateAndRenderMarkers();
   }
 
   private saveStars(): void {
@@ -1637,16 +1709,27 @@ export class TimelineManager {
     } catch {}
   }
 
-  private loadStars(): void {
+  private async loadStars(): Promise<void> {
     this.starred.clear();
+    this.starredAtMap.clear();
     const cid = this.conversationId;
     if (!cid) return;
     try {
-      const raw = localStorage.getItem(`deepseekTimelineStars:${cid}`);
-      if (!raw) return;
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) arr.forEach((id: any) => this.starred.add(String(id)));
-    } catch {}
+      const messages = await StarredMessagesService.getStarredMessagesForConversation(cid);
+      messages.forEach((msg) => {
+        this.starred.add(msg.turnId);
+        this.starredAtMap.set(msg.turnId, msg.starredAt);
+      });
+      localStorage.setItem(`deepseekTimelineStars:${cid}`, JSON.stringify(Array.from(this.starred)));
+    } catch (e) {
+      try {
+        const raw = localStorage.getItem(`deepseekTimelineStars:${cid}`);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) arr.forEach((id: any) => this.starred.add(String(id)));
+        }
+      } catch {}
+    }
   }
 
   private cancelLongPress(): void {
@@ -1662,7 +1745,79 @@ export class TimelineManager {
     this.longPressTriggered = false;
   }
 
+  private getConversationTitle(): string {
+    let title = document.title?.trim() || '';
+    title = title.replace(/\s*-\s*DeepSeek\s*$/i, '').trim();
+    if (title && title !== 'DeepSeek' && title !== 'DeepSeek Chat') {
+      return title;
+    }
+    const selected = document.querySelector('.gv-folder-conversation-selected .gv-conversation-title');
+    if (selected?.textContent) {
+      return selected.textContent.trim();
+    }
+    const activeSidebarItem = document.querySelector('a[href*="/a/chat/s/"][class*="active"] div');
+    if (activeSidebarItem?.textContent) {
+      return activeSidebarItem.textContent.trim();
+    }
+    return 'DeepSeek Conversation';
+  }
+
+  private handleStarredMessageNavigation(): void {
+    try {
+      const hash = window.location.hash;
+      if (!hash.startsWith('#ds-turn-')) return;
+
+      const turnId = hash.replace('#ds-turn-', '');
+      if (!turnId) return;
+
+      console.log('[Timeline] Handling starred message navigation, turnId:', turnId);
+
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      const checkAndScroll = (): boolean => {
+        if (this.markers.length === 0) return false;
+
+        const marker = this.markerMap.get(turnId);
+        if (marker && marker.element) {
+          console.log('[Timeline] Found target marker, scrolling');
+
+          setTimeout(() => {
+            this.smoothScrollTo(marker.element, 800);
+
+            setTimeout(() => {
+              window.history.replaceState(
+                null,
+                '',
+                window.location.pathname + window.location.search,
+              );
+            }, 900);
+          }, 100);
+          return true;
+        }
+        return false;
+      };
+
+      if (checkAndScroll()) return;
+
+      const timer = setInterval(() => {
+        attempts++;
+        if (checkAndScroll() || attempts >= maxAttempts) {
+          clearInterval(timer);
+        }
+      }, 300);
+    } catch (error) {
+      console.warn('[Timeline] Failed to handle starred message navigation:', error);
+    }
+  }
+
   destroy(): void {
+    // Unsubscribe EventBus listeners
+    this.eventBusUnsubscribers.forEach((unsub) => {
+      try { unsub(); } catch {}
+    });
+    this.eventBusUnsubscribers = [];
+
     // Ensure draggable listeners are removed
     try {
       this.toggleDraggable(false);

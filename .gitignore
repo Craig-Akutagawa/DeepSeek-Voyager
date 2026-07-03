@@ -41,3 +41,5 @@ yarn-error.log*
 *.crx
 *.xpi
 
+# Reference temp folder
+gemini-voyager-temp/

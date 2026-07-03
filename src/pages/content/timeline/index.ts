@@ -1,5 +1,6 @@
-import { TimelineManager } from './manager';
 import { isConversationRoute } from '../deepseek/selectors';
+
+import { TimelineManager } from './manager';
 
 function isDeepSeekConversationRoute(pathname = location.pathname): boolean {
   // DeepSeek 对话路由格式: /a/chat/s/[UUID]
@@ -13,20 +14,20 @@ let routeListenersAttached = false;
 let activeObservers: MutationObserver[] = [];
 let cleanupHandlers: (() => void)[] = [];
 let isInitializing = false;
+let timelineEnabled = true;
 
-function initializeTimeline(): void {
-  // 防止重复初始化
-  if (isInitializing) {
-    console.log('[Timeline] 已在初始化中，跳过重复调用');
-    return;
-  }
-  
+function cleanupTimelineInstance(): void {
+  isInitializing = false;
   if (timelineManagerInstance) {
     try {
       timelineManagerInstance.destroy();
     } catch {}
     timelineManagerInstance = null;
   }
+  removeTimelineDOM();
+}
+
+function removeTimelineDOM(): void {
   try {
     document.querySelector('.gemini-timeline-bar')?.remove();
   } catch {}
@@ -36,19 +37,43 @@ function initializeTimeline(): void {
   try {
     document.getElementById('gemini-timeline-tooltip')?.remove();
   } catch {}
+}
+
+function initializeTimeline(): void {
+  // 防止重复初始化
+  if (isInitializing) {
+    console.log('[Timeline] 已在初始化中，跳过重复调用');
+    return;
+  }
   
-  isInitializing = true;
-  timelineManagerInstance = new TimelineManager();
-  timelineManagerInstance
-    .init()
-    .then(() => {
-      isInitializing = false;
-      console.log('[Timeline/index] 初始化成功完成');
-    })
-    .catch((err) => {
-      isInitializing = false;
-      console.error('[DeepSeek Voyager] Timeline initialization failed:', err);
-    });
+  chrome.storage?.sync?.get({ deepseekTimelineEnabled: false }, (res) => {
+    timelineEnabled = !!res.deepseekTimelineEnabled;
+    if (!timelineEnabled) {
+      cleanupTimelineInstance();
+      return;
+    }
+
+    if (timelineManagerInstance) {
+      try {
+        timelineManagerInstance.destroy();
+      } catch {}
+      timelineManagerInstance = null;
+    }
+    removeTimelineDOM();
+    
+    isInitializing = true;
+    timelineManagerInstance = new TimelineManager();
+    timelineManagerInstance
+      .init()
+      .then(() => {
+        isInitializing = false;
+        console.log('[Timeline/index] 初始化成功完成');
+      })
+      .catch((err) => {
+        isInitializing = false;
+        console.error('[DeepSeek Voyager] Timeline initialization failed:', err);
+      });
+  });
 }
 
 function handleUrlChange(): void {
@@ -56,22 +81,7 @@ function handleUrlChange(): void {
   currentUrl = location.href;
   if (isDeepSeekConversationRoute()) initializeTimeline();
   else {
-    isInitializing = false; // 重置标志
-    if (timelineManagerInstance) {
-      try {
-        timelineManagerInstance.destroy();
-      } catch {}
-      timelineManagerInstance = null;
-    }
-    try {
-      document.querySelector('.gemini-timeline-bar')?.remove();
-    } catch {}
-    try {
-      document.querySelector('.timeline-left-slider')?.remove();
-    } catch {}
-    try {
-      document.getElementById('gemini-timeline-tooltip')?.remove();
-    } catch {}
+    cleanupTimelineInstance();
   }
 }
 
@@ -128,6 +138,20 @@ function cleanup(): void {
 }
 
 export function startTimeline(): void {
+  // Listen for changes from storage to enable/disable on the fly
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== 'sync') return;
+    if (changes.deepseekTimelineEnabled) {
+      const newVal = !!changes.deepseekTimelineEnabled.newValue;
+      timelineEnabled = newVal;
+      if (!newVal) {
+        cleanupTimelineInstance();
+      } else if (isDeepSeekConversationRoute()) {
+        initializeTimeline();
+      }
+    }
+  });
+
   // Immediately initialize if we're already on a conversation page
   if (document.body && isDeepSeekConversationRoute()) {
     initializeTimeline();

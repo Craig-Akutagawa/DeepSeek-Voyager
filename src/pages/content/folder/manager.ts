@@ -1,10 +1,5 @@
 import browser from 'webextension-polyfill';
 
-import type { Folder, FolderData, ConversationReference, DragData } from './types';
-
-import { FolderImportExportService } from '@/features/folder/services/FolderImportExportService';
-import type { ImportStrategy } from '@/features/folder/types/import-export';
-import { initI18n, getTranslationSync } from '@/utils/i18n';
 import {
   DEEPSEEK_SELECTORS,
   tryFindElement,
@@ -12,7 +7,13 @@ import {
   extractConversationId,
   buildConversationUrl,
 } from '../deepseek/selectors';
+
 import { createIcon, getIconHTML } from './icons';
+import type { Folder, FolderData, ConversationReference, DragData } from './types';
+
+import { FolderImportExportService } from '@/features/folder/services/FolderImportExportService';
+import type { ImportStrategy } from '@/features/folder/types/import-export';
+import { initI18n, getTranslationSync } from '@/utils/i18n';
 
 const STORAGE_KEY = 'dsFolderData';  // DeepSeek Folder Data
 const IS_DEBUG = false; // Set to true to enable debug logging
@@ -47,6 +48,9 @@ export class FolderManager {
   private sideNavObserver: MutationObserver | null = null;
   private importInProgress: boolean = false; // Lock to prevent concurrent imports
   private exportInProgress: boolean = false; // Lock to prevent concurrent exports
+  private hideFolderPanel: boolean = false;
+  private isPanelCollapsed: boolean = false;
+  private positionOffset: number = 0;
 
   constructor() {
     this.loadData();
@@ -70,24 +74,72 @@ export class FolderManager {
         return;
       }
 
-      // Create and inject folder UI
-      this.createFolderUI();
+      // Load settings from sync storage
+      if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
+        chrome.storage.sync.get(
+          {
+            dsHideFolderPanel: false,
+            dsFolderPanelCollapsed: false,
+            dsFolderPositionOffset: 0,
+          },
+          (items) => {
+            this.hideFolderPanel = !!items.dsHideFolderPanel;
+            this.isPanelCollapsed = !!items.dsFolderPanelCollapsed;
+            this.positionOffset = Number(items.dsFolderPositionOffset) || 0;
 
-      // Make conversations draggable
-      this.makeConversationsDraggable();
+            // Create and inject folder UI
+            this.createFolderUI();
 
-      // Set up mutation observer to handle dynamically added conversations
-      this.setupMutationObserver();
+            // Make conversations draggable
+            this.makeConversationsDraggable();
 
-      // Set up sidebar visibility observer
-      this.setupSideNavObserver();
+            // Set up mutation observer to handle dynamically added conversations
+            this.setupMutationObserver();
 
-      // Initial visibility check
-      this.updateVisibilityBasedOnSideNav();
+            // Set up sidebar visibility observer
+            this.setupSideNavObserver();
 
-      // Set up native conversation menu injection
-      this.setupConversationClickTracking();
-      this.setupNativeConversationMenuObserver();
+            // Initial visibility check
+            this.updateVisibilityBasedOnSideNav();
+
+            // Set up native conversation menu injection
+            this.setupConversationClickTracking();
+            this.setupNativeConversationMenuObserver();
+
+            this.applySettings();
+          }
+        );
+
+        // Listen for settings changes
+        chrome.storage.onChanged.addListener((changes, area) => {
+          if (area !== 'sync') return;
+          let changed = false;
+          if (changes.dsHideFolderPanel) {
+            this.hideFolderPanel = !!changes.dsHideFolderPanel.newValue;
+            changed = true;
+          }
+          if (changes.dsFolderPanelCollapsed) {
+            this.isPanelCollapsed = !!changes.dsFolderPanelCollapsed.newValue;
+            changed = true;
+          }
+          if (changes.dsFolderPositionOffset) {
+            this.positionOffset = Number(changes.dsFolderPositionOffset.newValue) || 0;
+            changed = true;
+          }
+          if (changed) {
+            this.applySettings();
+          }
+        });
+      } else {
+        // Fallback
+        this.createFolderUI();
+        this.makeConversationsDraggable();
+        this.setupMutationObserver();
+        this.setupSideNavObserver();
+        this.updateVisibilityBasedOnSideNav();
+        this.setupConversationClickTracking();
+        this.setupNativeConversationMenuObserver();
+      }
 
       this.debug('Initialized successfully');
     } catch (error) {
@@ -159,6 +211,48 @@ export class FolderManager {
 
     // Insert before Recent section
     this.recentSection.parentElement?.insertBefore(this.containerElement, this.recentSection);
+    this.applySettings();
+  }
+
+  private applySettings(): void {
+    if (!this.containerElement) return;
+
+    // Apply show/hide setting
+    if (this.hideFolderPanel) {
+      this.containerElement.style.setProperty('display', 'none', 'important');
+    } else {
+      this.containerElement.style.removeProperty('display');
+    }
+
+    // Apply collapse setting
+    const foldersList = this.containerElement.querySelector('.gv-folder-list') as HTMLElement | null;
+    if (foldersList) {
+      if (this.isPanelCollapsed) {
+        foldersList.style.setProperty('display', 'none', 'important');
+      } else {
+        foldersList.style.removeProperty('display');
+      }
+    }
+
+    const collapseBtn = this.containerElement.querySelector('.gv-folder-collapse-btn');
+    if (collapseBtn) {
+      collapseBtn.innerHTML = '';
+      collapseBtn.appendChild(createIcon(this.isPanelCollapsed ? 'chevron_right' : 'expand_more'));
+      collapseBtn.setAttribute('title', this.isPanelCollapsed ? '展开面板' : '折叠面板');
+    }
+
+    // Apply offset setting
+    this.containerElement.style.position = 'relative';
+    this.containerElement.style.left = `${this.positionOffset}px`;
+  }
+
+  private togglePanelCollapse(button: HTMLElement): void {
+    this.isPanelCollapsed = !this.isPanelCollapsed;
+    if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
+      chrome.storage.sync.set({ dsFolderPanelCollapsed: this.isPanelCollapsed });
+    } else {
+      this.applySettings();
+    }
   }
 
   private createHeader(): HTMLElement {
@@ -215,9 +309,17 @@ export class FolderManager {
     addButton.title = this.t('folder_create');
     addButton.addEventListener('click', () => this.createFolder());
 
+    // Collapse panel button
+    const collapseButton = document.createElement('button');
+    collapseButton.className = 'gv-folder-action-btn gv-folder-collapse-btn';
+    collapseButton.appendChild(createIcon(this.isPanelCollapsed ? 'chevron_right' : 'expand_more'));
+    collapseButton.title = this.isPanelCollapsed ? '展开面板' : '折叠面板';
+    collapseButton.addEventListener('click', () => this.togglePanelCollapse(collapseButton));
+
     actionsContainer.appendChild(importButton);
     actionsContainer.appendChild(exportButton);
     actionsContainer.appendChild(addButton);
+    actionsContainer.appendChild(collapseButton);
 
     header.appendChild(titleContainer);
     header.appendChild(actionsContainer);

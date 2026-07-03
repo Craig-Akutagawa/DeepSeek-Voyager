@@ -3,7 +3,7 @@
   <h1>Gemini Voyager</h1>
   <h3>让 Gemini 体验更上一层楼 ✨</h3>
   <p>优雅的时间线导航、文件夹管理对话、保存常用提示词——这一个强大的扩展就够了</p>
-  
+
   <p>
     <img src="https://img.shields.io/badge/Chrome-✓-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome">
     <img src="https://img.shields.io/badge/Edge-✓-0078D7?style=flat-square&logo=microsoftedge&logoColor=white" alt="Edge">
@@ -29,6 +29,7 @@
 ### 📍 时间线导航
 
 通过可视化节点导航对话：
+
 - 点击节点跳转到对应消息
 - 悬停预览消息内容
 - 长按标记重要消息（跨标签页同步）
@@ -38,6 +39,7 @@
 ### 📂 文件夹管理
 
 通过拖放操作管理对话：
+
 - 两级层级结构（文件夹和子文件夹）
 - 右键菜单实现重命名/复制/删除
 - 自动识别 Gem 类型并显示对应图标
@@ -48,6 +50,7 @@
 ### 💡 提示词库
 
 保存和复用提示词：
+
 - 基于标签的组织方式
 - 关键词搜索
 - 支持 JSON 导入/导出
@@ -56,6 +59,7 @@
 ### 📐 公式复制
 
 点击 LaTeX/MathJax 公式复制源代码：
+
 - 一键复制公式源码
 - 支持行内和独立显示公式
 - 复制成功视觉反馈
@@ -63,6 +67,7 @@
 ### 💾 对话导出（JSON + Markdown/PDF）
 
 将对话导出为：
+
 - 结构化 JSON
 - Markdown/PDF（图片自动打包至 `assets/`，打印样式优化）
 - 点击 Gemini 徽标旁的导出图标
@@ -78,11 +83,10 @@
   "url": "https://gemini.google.com/app/...",
   "exportedAt": "2025-01-01T12:34:56.000Z",
   "count": 3,
-  "items": [
-    { "user": "...", "assistant": "...", "starred": true }
-  ]
+  "items": [{ "user": "...", "assistant": "...", "starred": true }]
 }
 ```
+
 </details>
 
 ### 📏 对话宽度调整
@@ -119,6 +123,7 @@
 3. 在 Firefox 中打开 `about:debugging#/runtime/this-firefox`
 4. 点击"临时载入附加组件..."
 5. 选择解压文件夹中的 `manifest.json` 文件
+
 </details>
 
 <details>
@@ -154,11 +159,13 @@
 <summary>Edge 和 Opera 用户的安装说明</summary>
 
 **Microsoft Edge 用户：**
+
 1. 通过上方按钮访问 Chrome 应用商店
 2. 浏览器会提示"允许来自其他商店的扩展"
 3. 点击"允许"后即可正常安装
 
 **Opera 用户：**
+
 1. 先安装 [Install Chrome Extensions](https://addons.opera.com/extensions/details/install-chrome-extensions/)（Opera 官方扩展）
 2. 然后访问 Chrome 应用商店
 3. 像在 Chrome 上一样安装即可
@@ -193,6 +200,7 @@ bun run build:all      # 所有浏览器
 ```
 
 或使用 npm/pnpm：
+
 ```bash
 pnpm install
 pnpm run dev:chrome    # Chrome
@@ -203,6 +211,7 @@ pnpm run dev:safari    # Safari（仅限 macOS）
 ### Safari 开发
 
 Safari 需要额外的构建步骤。查看 [safari/README_ZH.md](../safari/README_ZH.md) 了解：
+
 - 从源代码构建
 - 开发工作流与自动重载
 - 添加 Swift 原生代码
@@ -216,7 +225,6 @@ Safari 需要额外的构建步骤。查看 [safari/README_ZH.md](../safari/READ
 ## 🙏 致谢
 
 灵感来源于 [ChatGPT Conversation Timeline](https://github.com/Reborn14/chatgpt-conversation-timeline)。我们为 Gemini 适配了时间线概念，并添加了文件夹管理、提示词库、聊天导出等大量新功能。
-
 
 ## 🤝 参与贡献
 
