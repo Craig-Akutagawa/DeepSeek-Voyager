@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DeepSeek Voyager",
   "description": "Supercharge your DeepSeek experience with timeline navigation, folder organization, and chat export.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "action": {
     "default_popup": "src/pages/popup/index.html",
     "default_icon": {
@@ -12,8 +12,12 @@
   "icons": {
     "128": "icon-128.png"
   },
-  "permissions": ["storage"],
-  "host_permissions": ["https://chat.deepseek.com/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chat.deepseek.com/*"
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'"
   },
@@ -23,15 +27,27 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://chat.deepseek.com/*"],
-      "js": ["src/pages/content/index.tsx"],
-      "css": ["contentStyle.css"]
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "js": [
+        "src/pages/content/index.tsx"
+      ],
+      "css": [
+        "contentStyle.css"
+      ]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["contentStyle.css", "icon-128.png", "icon-32.png"],
-      "matches": ["https://chat.deepseek.com/*"]
+      "resources": [
+        "contentStyle.css",
+        "icon-128.png",
+        "icon-32.png"
+      ],
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ]
     }
   ]
 }
