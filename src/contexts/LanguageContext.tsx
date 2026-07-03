@@ -14,7 +14,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 const normalizeLang = (lang: string | undefined): Language => {
-  return (lang && lang.toLowerCase().startsWith('zh')) ? 'zh' : 'en';
+  return lang && lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 };
 
 const extract = (raw: any): Record<string, string> => {
@@ -67,7 +67,11 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       changes: { [key: string]: browser.Storage.StorageChange },
       areaName: string
     ) => {
-      if (areaName === 'sync' && changes.language?.newValue && typeof changes.language.newValue === 'string') {
+      if (
+        areaName === 'sync' &&
+        changes.language?.newValue &&
+        typeof changes.language.newValue === 'string'
+      ) {
         setLanguageState(normalizeLang(changes.language.newValue));
       }
     };

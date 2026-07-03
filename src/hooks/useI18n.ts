@@ -5,7 +5,7 @@ import browser from 'webextension-polyfill';
 
 const useI18n = () => {
   const normalizeLang = (lang: string | undefined) =>
-    (lang && lang.toLowerCase().startsWith('zh')) ? 'zh' : 'en';
+    lang && lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 
   const initialUiLang = (() => {
     try {
@@ -32,7 +32,9 @@ const useI18n = () => {
   };
 
   const [language, setLanguage] = useState<string>(normalizeLang(initialUiLang));
-  const [dict, setDict] = useState<Record<string, string>>(dictionaries[normalizeLang(initialUiLang)] || dictionaries.en);
+  const [dict, setDict] = useState<Record<string, string>>(
+    dictionaries[normalizeLang(initialUiLang)] || dictionaries.en
+  );
 
   useEffect(() => {
     const getLanguage = async () => {

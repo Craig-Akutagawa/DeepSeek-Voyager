@@ -31,14 +31,14 @@ async function pack() {
   const content = await zip.generateAsync({
     type: 'nodebuffer',
     compression: 'DEFLATE',
-    compressionOptions: { level: 9 }
+    compressionOptions: { level: 9 },
   });
 
   fs.writeFileSync(zipPath, content);
   console.log(`[Pack] Zip file successfully created at ${zipPath}`);
 }
 
-pack().catch(err => {
+pack().catch((err) => {
   console.error('[Pack] Failed to create zip:', err);
   process.exit(1);
 });

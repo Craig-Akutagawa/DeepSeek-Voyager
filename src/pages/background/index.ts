@@ -28,7 +28,12 @@ class StarredMessagesManager {
     try {
       const result = await chrome.storage.local.get([STORAGE_KEY_STARRED_MESSAGES]);
       const starred = result[STORAGE_KEY_STARRED_MESSAGES] as any;
-      if (starred && typeof starred === 'object' && starred.messages && typeof starred.messages === 'object') {
+      if (
+        starred &&
+        typeof starred === 'object' &&
+        starred.messages &&
+        typeof starred.messages === 'object'
+      ) {
         return starred as StarredMessagesData;
       }
       return { messages: {} };
@@ -76,7 +81,7 @@ class StarredMessagesManager {
       if (data.messages[conversationId]) {
         const initialLength = data.messages[conversationId].length;
         data.messages[conversationId] = data.messages[conversationId].filter(
-          (m) => m.turnId !== turnId,
+          (m) => m.turnId !== turnId
         );
 
         if (data.messages[conversationId].length < initialLength) {
@@ -109,12 +114,12 @@ class StarredMessagesManager {
   async reconcileConversationIds(
     targetConversationId: string,
     sourceConversationIds: string[],
-    conversationUrl?: string,
+    conversationUrl?: string
   ): Promise<StarredMessage[]> {
     return this.serialize(async () => {
       const data = await this.getFromStorage();
       const uniqueConversationIds = Array.from(
-        new Set([targetConversationId, ...sourceConversationIds]),
+        new Set([targetConversationId, ...sourceConversationIds])
       ).filter(Boolean);
 
       const mergedMessages = new Map<string, StarredMessage>();
@@ -180,7 +185,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           case 'ds.starred.remove': {
             const removed = await starredMessagesManager.removeStarredMessage(
               message.payload.conversationId,
-              message.payload.turnId,
+              message.payload.turnId
             );
             sendResponse({ ok: true, removed });
             return;
@@ -192,7 +197,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           }
           case 'ds.starred.getForConversation': {
             const messages = await starredMessagesManager.getStarredMessagesForConversation(
-              message.payload.conversationId,
+              message.payload.conversationId
             );
             sendResponse({ ok: true, messages });
             return;
@@ -200,7 +205,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           case 'ds.starred.isStarred': {
             const isStarred = await starredMessagesManager.isMessageStarred(
               message.payload.conversationId,
-              message.payload.turnId,
+              message.payload.turnId
             );
             sendResponse({ ok: true, isStarred });
             return;
@@ -213,7 +218,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 : [],
               typeof message.payload.conversationUrl === 'string'
                 ? message.payload.conversationUrl
-                : undefined,
+                : undefined
             );
             sendResponse({ ok: true, messages });
             return;
@@ -238,7 +243,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const b64 = arrayBufferToBase64(ab);
       sendResponse({ ok: true, contentType, base64: b64 });
     } catch (e: any) {
-      try { sendResponse({ ok: false, error: String(e?.message || e) }); } catch {}
+      try {
+        sendResponse({ ok: false, error: String(e?.message || e) });
+      } catch {}
     }
   })();
   return true; // keep channel open for async sendResponse
@@ -253,4 +260,3 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   }
   return btoa(binary);
 }
-

@@ -5,7 +5,7 @@ import browser from 'webextension-polyfill';
 type Language = 'en' | 'zh';
 
 const normalizeLang = (lang: string | undefined): Language => {
-  return (lang && lang.toLowerCase().startsWith('zh')) ? 'zh' : 'en';
+  return lang && lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 };
 
 const extract = (raw: any): Record<string, string> => {
@@ -79,7 +79,11 @@ export async function initI18n(): Promise<void> {
 
   // Listen for language changes
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'sync' && changes.language?.newValue && typeof changes.language.newValue === 'string') {
+    if (
+      areaName === 'sync' &&
+      changes.language?.newValue &&
+      typeof changes.language.newValue === 'string'
+    ) {
       cachedLanguage = normalizeLang(changes.language.newValue);
     }
   });

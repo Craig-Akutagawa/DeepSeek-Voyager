@@ -137,15 +137,19 @@ localStorage.removeItem('deepseekTimelineStars:deepseek:...');
 ## 常见问题
 
 ### Q: 时间轴不显示？
+
 A: 检查是否在对话页面（URL包含 `/a/chat/s/`）
 
 ### Q: 拖拽对话无效？
+
 A: 刷新页面，或检查控制台是否有错误
 
 ### Q: 选择器失效？
+
 A: DeepSeek 可能更新了DOM结构，参考 [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) 更新选择器
 
 ### Q: 导出按钮不显示？
+
 A: 确保在对话页面，并检查控制台错误
 
 ---
@@ -178,4 +182,3 @@ src/
 ---
 
 Happy coding! 🎉
-

@@ -100,6 +100,6 @@ export function startFolderItemFontSizeAdjuster() {
         // ignore
       }
     },
-    { once: true },
+    { once: true }
   );
 }

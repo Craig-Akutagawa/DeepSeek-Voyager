@@ -503,7 +503,15 @@ html.dark .dsv-export-btn:hover,
   color: #111827;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
   padding: 20px;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 .dsv-export-dialog-title {
   font-size: 18px;
@@ -1348,24 +1356,7 @@ html.dark .dsv-export-format-option,
 }
 
 .gv-folder-add-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
   color: var(--folder-icon-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-.gv-folder-add-btn:hover {
-  background-color: var(--folder-hover-bg);
-  color: var(--folder-text);
 }
 
 /* Folder List */
@@ -1668,6 +1659,7 @@ html.dark .dsv-export-format-option,
 .gv-folder-name-input,
 .gv-folder-rename-input {
   flex: 1;
+  min-width: 0;
   padding: 6px 8px;
   border: 1px solid var(--folder-border);
   border-radius: 4px;

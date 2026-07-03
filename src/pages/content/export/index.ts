@@ -127,7 +127,11 @@ function readSavedButtonPosition(): { left: number; top: number } | null {
   }
 }
 
-function clampButtonPosition(left: number, top: number, host: HTMLElement): { left: number; top: number } {
+function clampButtonPosition(
+  left: number,
+  top: number,
+  host: HTMLElement
+): { left: number; top: number } {
   const rect = host.getBoundingClientRect();
   const width = rect.width || 42;
   const height = rect.height || 42;
@@ -156,16 +160,14 @@ function setupDraggableButton(button: HTMLButtonElement): void {
   const savedPosition = readSavedButtonPosition();
   if (savedPosition) applyButtonPosition(host, savedPosition);
 
-  let dragState:
-    | {
-        pointerId: number;
-        startX: number;
-        startY: number;
-        startLeft: number;
-        startTop: number;
-        moved: boolean;
-      }
-    | null = null;
+  let dragState: {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startLeft: number;
+    startTop: number;
+    moved: boolean;
+  } | null = null;
 
   button.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
@@ -245,7 +247,11 @@ function getTurnPreview(turn: DeepSeekChatTurn, index: number): string {
   return source.replace(/\s+/g, ' ').trim().slice(0, 110);
 }
 
-function createFormatOption(format: SelectableExportFormat, label: string, checked: boolean): HTMLLabelElement {
+function createFormatOption(
+  format: SelectableExportFormat,
+  label: string,
+  checked: boolean
+): HTMLLabelElement {
   const option = document.createElement('label');
   option.className = 'dsv-export-format-option';
 
@@ -278,7 +284,12 @@ function showSelectableExportDialog(options: {
 
   const title = document.createElement('div');
   title.className = 'dsv-export-dialog-title';
-  title.textContent = translate(options.dict, options.lang, 'export_dialog_title', 'Export Conversation');
+  title.textContent = translate(
+    options.dict,
+    options.lang,
+    'export_dialog_title',
+    'Export Conversation'
+  );
 
   const subtitle = document.createElement('div');
   subtitle.className = 'dsv-export-dialog-subtitle';
@@ -390,7 +401,9 @@ function showSelectableExportDialog(options: {
       checkboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value)
     );
     const selectedTurns = options.turns.filter((turn) => selectedIds.has(turn.turnId));
-    const formatInput = dialog.querySelector<HTMLInputElement>('input[name="dsv-export-format"]:checked');
+    const formatInput = dialog.querySelector<HTMLInputElement>(
+      'input[name="dsv-export-format"]:checked'
+    );
     const format = (formatInput?.value || ExportFormat.MARKDOWN) as SelectableExportFormat;
 
     close();

@@ -21,7 +21,7 @@ export class StarredMessagesService {
   static async getAllStarredMessages(): Promise<StarredMessagesData> {
     try {
       const response = await this.sendMessage<{ ok: boolean; data: StarredMessagesData }>(
-        'ds.starred.getAll',
+        'ds.starred.getAll'
       );
       return response.data || { messages: {} };
     } catch (error) {
@@ -31,12 +31,12 @@ export class StarredMessagesService {
   }
 
   static async getStarredMessagesForConversation(
-    conversationId: string,
+    conversationId: string
   ): Promise<StarredMessage[]> {
     try {
       const response = await this.sendMessage<{ ok: boolean; messages: StarredMessage[] }>(
         'ds.starred.getForConversation',
-        { conversationId },
+        { conversationId }
       );
       return response.messages || [];
     } catch (error) {
@@ -49,7 +49,7 @@ export class StarredMessagesService {
     try {
       const response = await this.sendMessage<{ ok: boolean; added: boolean }>(
         'ds.starred.add',
-        message,
+        message
       );
 
       if (response.added) {
@@ -68,7 +68,7 @@ export class StarredMessagesService {
     try {
       const response = await this.sendMessage<{ ok: boolean; removed: boolean }>(
         'ds.starred.remove',
-        { conversationId, turnId },
+        { conversationId, turnId }
       );
 
       if (response.removed) {
@@ -86,7 +86,7 @@ export class StarredMessagesService {
   private static updateLegacyStorage(
     conversationId: string,
     turnId: string,
-    action: 'add' | 'remove',
+    action: 'add' | 'remove'
   ): void {
     try {
       const key = `deepseekTimelineStars:${conversationId}`;
@@ -135,7 +135,7 @@ export class StarredMessagesService {
   static async reconcileConversationIds(
     targetConversationId: string,
     sourceConversationIds: string[],
-    conversationUrl: string,
+    conversationUrl: string
   ): Promise<StarredMessage[]> {
     try {
       const response = await this.sendMessage<{ ok: boolean; messages: StarredMessage[] }>(
@@ -144,7 +144,7 @@ export class StarredMessagesService {
           targetConversationId,
           sourceConversationIds,
           conversationUrl,
-        },
+        }
       );
       return response.messages || [];
     } catch (error) {

@@ -122,11 +122,7 @@ export class FormulaCopyService {
   /**
    * Copy formula to clipboard and show notification
    */
-  private async copyFormula(
-    formula: string,
-    x: number,
-    y: number
-  ): Promise<void> {
+  private async copyFormula(formula: string, x: number, y: number): Promise<void> {
     try {
       const success = await this.copyToClipboard(formula);
 
@@ -229,10 +225,7 @@ export class FormulaCopyService {
   /**
    * Search for data-math attribute in element subtree
    */
-  private findDataMathInSubtree(
-    root: HTMLElement,
-    currentDepth: number
-  ): HTMLElement | null {
+  private findDataMathInSubtree(root: HTMLElement, currentDepth: number): HTMLElement | null {
     let searchElement: HTMLElement | null = root;
     let depth = currentDepth;
 
@@ -250,12 +243,7 @@ export class FormulaCopyService {
   /**
    * Show toast notification
    */
-  private showToast(
-    message: string,
-    x: number,
-    y: number,
-    isSuccess: boolean
-  ): void {
+  private showToast(message: string, x: number, y: number, isSuccess: boolean): void {
     if (!this.copyToast) {
       this.copyToast = this.createCopyToast();
     }

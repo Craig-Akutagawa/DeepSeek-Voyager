@@ -58,25 +58,24 @@ export default function Popup() {
   }, []);
 
   // Helper function to apply settings to storage
-  const apply = useCallback((
-    nextMode: ScrollMode | null,
-    nextEnabled?: boolean,
-    resetPosition?: boolean
-  ) => {
-    const payload: any = {};
-    if (nextMode) payload.deepseekTimelineScrollMode = nextMode;
-    if (typeof nextEnabled === 'boolean') {
-      payload.deepseekTimelineEnabled = nextEnabled;
-      if (nextEnabled) {
-        payload.deepseekTimelineHideContainer = true;
-        payload.deepseekTimelineDraggable = true;
+  const apply = useCallback(
+    (nextMode: ScrollMode | null, nextEnabled?: boolean, resetPosition?: boolean) => {
+      const payload: any = {};
+      if (nextMode) payload.deepseekTimelineScrollMode = nextMode;
+      if (typeof nextEnabled === 'boolean') {
+        payload.deepseekTimelineEnabled = nextEnabled;
+        if (nextEnabled) {
+          payload.deepseekTimelineHideContainer = true;
+          payload.deepseekTimelineDraggable = true;
+        }
       }
-    }
-    if (resetPosition) payload.deepseekTimelinePosition = null;
-    try {
-      chrome.storage?.sync?.set(payload);
-    } catch {}
-  }, []);
+      if (resetPosition) payload.deepseekTimelinePosition = null;
+      try {
+        chrome.storage?.sync?.set(payload);
+      } catch {}
+    },
+    []
+  );
 
   // Width adjuster for chat width
   const chatWidthAdjuster = useWidthAdjuster({
@@ -219,7 +218,9 @@ export default function Popup() {
                   />
                   <button
                     className={`relative z-10 px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                      mode === 'flow' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      mode === 'flow'
+                        ? 'text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                     onClick={() => {
                       setMode('flow');
@@ -230,7 +231,9 @@ export default function Popup() {
                   </button>
                   <button
                     className={`relative z-10 px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                      mode === 'jump' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      mode === 'jump'
+                        ? 'text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                     onClick={() => {
                       setMode('jump');
@@ -248,7 +251,10 @@ export default function Popup() {
               <CardTitle className="mb-4 text-xs uppercase">{t('timelineOptions')}</CardTitle>
               <CardContent className="p-0 space-y-4">
                 <div className="flex items-center justify-between group">
-                  <Label htmlFor="enable-timeline" className="cursor-pointer text-sm font-medium group-hover:text-primary transition-colors">
+                  <Label
+                    htmlFor="enable-timeline"
+                    className="cursor-pointer text-sm font-medium group-hover:text-primary transition-colors"
+                  >
                     {isZh ? '启用自定义时间轴' : 'Enable Custom Timeline'}
                   </Label>
                   <Switch
@@ -265,11 +271,16 @@ export default function Popup() {
 
             {/* Folder Panel Options */}
             <Card className="p-4 hover:shadow-lg transition-shadow">
-              <CardTitle className="mb-4 text-xs uppercase">{isZh ? '文件夹面板设置' : 'Folder Settings'}</CardTitle>
+              <CardTitle className="mb-4 text-xs uppercase">
+                {isZh ? '文件夹面板设置' : 'Folder Settings'}
+              </CardTitle>
               <CardContent className="p-0 space-y-4">
                 {/* Hide folder panel switch */}
                 <div className="flex items-center justify-between group">
-                  <Label htmlFor="hide-folder-panel" className="cursor-pointer text-sm font-medium group-hover:text-primary transition-colors">
+                  <Label
+                    htmlFor="hide-folder-panel"
+                    className="cursor-pointer text-sm font-medium group-hover:text-primary transition-colors"
+                  >
                     {isZh ? '隐藏文件夹面板' : 'Hide Folder Panel'}
                   </Label>
                   <Switch
@@ -339,9 +350,12 @@ export default function Popup() {
                 {/* Folder Offset */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">{isZh ? '侧边栏位置微调偏移' : 'Position Offset'}</Label>
+                    <Label className="text-sm font-medium">
+                      {isZh ? '侧边栏位置微调偏移' : 'Position Offset'}
+                    </Label>
                     <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                      {folderPositionOffset > 0 ? `+${folderPositionOffset}` : folderPositionOffset} pt
+                      {folderPositionOffset > 0 ? `+${folderPositionOffset}` : folderPositionOffset}{' '}
+                      pt
                     </span>
                   </div>
                   <input
@@ -400,7 +414,9 @@ export default function Popup() {
                 apply(null, undefined, true);
               }}
             >
-              <span className="group-hover:scale-105 transition-transform">{t('resetPosition')}</span>
+              <span className="group-hover:scale-105 transition-transform">
+                {t('resetPosition')}
+              </span>
             </Button>
           </>
         ) : (
@@ -408,8 +424,15 @@ export default function Popup() {
           <div className="space-y-3">
             {starredMessages.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm space-y-2">
-                <svg className="w-12 h-12 mx-auto text-muted-foreground/45" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
-                  <path d="m354-287 126-76 126 77-33-144 111-96-146-13-58-136-58 135-146 13 111 97-33 143ZM233-120l65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z"/>
+                <svg
+                  className="w-12 h-12 mx-auto text-muted-foreground/45"
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="currentColor"
+                >
+                  <path d="m354-287 126-76 126 77-33-144 111-96-146-13-58-136-58 135-146 13 111 97-33 143ZM233-120l65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z" />
                 </svg>
                 <div>
                   {isZh
@@ -444,8 +467,14 @@ export default function Popup() {
                       }}
                       title={isZh ? '取消收藏' : 'Remove Star'}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14" fill="currentColor">
-                        <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v500h400v-500ZM360-280h80v-340h-80v340Zm160 0h80v-340h-80v340ZM280-720v500-500Z"/>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="currentColor"
+                      >
+                        <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v500h400v-500ZM360-280h80v-340h-80v340Zm160 0h80v-340h-80v340ZM280-720v500-500Z" />
                       </svg>
                     </button>
                   </Card>

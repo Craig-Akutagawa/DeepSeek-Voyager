@@ -15,7 +15,7 @@ import { FolderImportExportService } from '@/features/folder/services/FolderImpo
 import type { ImportStrategy } from '@/features/folder/types/import-export';
 import { initI18n, getTranslationSync } from '@/utils/i18n';
 
-const STORAGE_KEY = 'dsFolderData';  // DeepSeek Folder Data
+const STORAGE_KEY = 'dsFolderData'; // DeepSeek Folder Data
 const IS_DEBUG = false; // Set to true to enable debug logging
 const ROOT_CONVERSATIONS_ID = '__root_conversations__'; // Special ID for root-level conversations
 
@@ -171,11 +171,11 @@ export class FolderManager {
     }
 
     this.debug('查找对话列表，侧边栏容器:', this.sidebarContainer);
-    
+
     // DeepSeek: 直接在document中查找对话项（因为侧边栏可能嵌套较深）
     const conversationItems = document.querySelectorAll('a[href*="/a/chat/s/"]');
     this.debug('找到对话链接数量:', conversationItems.length);
-    
+
     if (conversationItems.length > 0) {
       // 使用侧边栏容器作为 Recent section
       this.recentSection = this.sidebarContainer;
@@ -225,7 +225,9 @@ export class FolderManager {
     }
 
     // Apply collapse setting
-    const foldersList = this.containerElement.querySelector('.gv-folder-list') as HTMLElement | null;
+    const foldersList = this.containerElement.querySelector(
+      '.gv-folder-list'
+    ) as HTMLElement | null;
     if (foldersList) {
       if (this.isPanelCollapsed) {
         foldersList.style.setProperty('display', 'none', 'important');
@@ -262,25 +264,16 @@ export class FolderManager {
     // Use bookshelf icon instead of text title
     const titleContainer = document.createElement('div');
     titleContainer.className = 'title-container';
-    
+
     const iconWrapper = document.createElement('div');
     iconWrapper.style.display = 'flex';
     iconWrapper.style.alignItems = 'center';
     iconWrapper.style.gap = '8px';
     iconWrapper.style.paddingLeft = '12px';
-    
+
     const bookshelfIcon = createIcon('bookshelf');
     bookshelfIcon.style.opacity = '0.7';
     iconWrapper.appendChild(bookshelfIcon);
-    
-    // Optional: small text label
-    const label = document.createElement('span');
-    label.textContent = this.t('folder_title');
-    label.style.fontSize = '12px';
-    label.style.opacity = '0.6';
-    label.style.fontWeight = '500';
-    label.style.color = 'var(--bard-color-on-surface-variant, #666)';  // 去除紫色，使用统一的文字颜色
-    iconWrapper.appendChild(label);
 
     titleContainer.appendChild(iconWrapper);
 
@@ -304,7 +297,7 @@ export class FolderManager {
 
     // Add folder button
     const addButton = document.createElement('button');
-    addButton.className = 'gv-folder-add-btn';
+    addButton.className = 'gv-folder-action-btn gv-folder-add-btn';
     addButton.appendChild(createIcon('add'));
     addButton.title = this.t('folder_create');
     addButton.addEventListener('click', () => this.createFolder());
@@ -384,9 +377,7 @@ export class FolderManager {
     folderName.addEventListener('dblclick', () => this.renameFolder(folder.id));
 
     // Add tooltip event listeners
-    folderName.addEventListener('mouseenter', () =>
-      this.showTooltip(folderName, folder.name),
-    );
+    folderName.addEventListener('mouseenter', () => this.showTooltip(folderName, folder.name));
     folderName.addEventListener('mouseleave', () => this.hideTooltip());
 
     // Pin button
@@ -585,12 +576,7 @@ export class FolderManager {
       const x = (e as DragEvent).clientX;
       const y = (e as DragEvent).clientY;
 
-      if (
-        x <= rect.left ||
-        x >= rect.right ||
-        y <= rect.top ||
-        y >= rect.bottom
-      ) {
+      if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
         element.classList.remove('gv-folder-list-dragover');
       }
     });
@@ -624,7 +610,10 @@ export class FolderManager {
     if (!this.sidebarContainer) return;
 
     // DeepSeek: 对话项是 a[href*="/a/chat/s/"] 链接
-    const conversations = tryFindElements(DEEPSEEK_SELECTORS.conversationItem, this.sidebarContainer);
+    const conversations = tryFindElements(
+      DEEPSEEK_SELECTORS.conversationItem,
+      this.sidebarContainer
+    );
     conversations.forEach((conv) => this.makeConversationDraggable(conv as HTMLElement));
     this.debug('使', conversations.length, '个对话可拖拽');
   }
@@ -695,7 +684,12 @@ export class FolderManager {
       (e as DragEvent).dataTransfer?.setData('application/json', JSON.stringify(dragData));
       element.style.opacity = '0.5';
 
-      this.debug('Folder drag start:', folder.name, 'canBeDragged:', this.canFolderBeDragged(folder.id));
+      this.debug(
+        'Folder drag start:',
+        folder.name,
+        'canBeDragged:',
+        this.canFolderBeDragged(folder.id)
+      );
     };
 
     const handleDragEnd = () => {
@@ -760,7 +754,7 @@ export class FolderManager {
         title,
         isGem: conversationData.isGem,
         gemId: conversationData.gemId,
-        url: conversationData.url
+        url: conversationData.url,
       });
 
       const dragData: DragData = {
@@ -785,7 +779,7 @@ export class FolderManager {
     // DeepSeek: 从 href 属性提取 UUID 格式的对话 ID
     const href = element.getAttribute('href') || '';
     const id = extractConversationId(href);
-    
+
     if (id) {
       this.debug('提取到对话ID:', id);
       return id;
@@ -800,11 +794,15 @@ export class FolderManager {
     return fallbackId;
   }
 
-  private extractConversationData(element: HTMLElement): { url: string; isGem: boolean; gemId?: string } {
+  private extractConversationData(element: HTMLElement): {
+    url: string;
+    isGem: boolean;
+    gemId?: string;
+  } {
     // DeepSeek: 从 href 属性提取完整 URL
     const href = element.getAttribute('href') || '';
     const conversationId = extractConversationId(href);
-    
+
     if (conversationId) {
       const url = buildConversationUrl(conversationId);
       this.debug('构建的URL:', url);
@@ -1155,7 +1153,10 @@ export class FolderManager {
     });
   }
 
-  private addConversationToFolder(folderId: string, dragData: DragData & { sourceFolderId?: string }): void {
+  private addConversationToFolder(
+    folderId: string,
+    dragData: DragData & { sourceFolderId?: string }
+  ): void {
     this.debug('Adding conversation to folder:', {
       folderId,
       dragData,
@@ -1348,9 +1349,15 @@ export class FolderManager {
     this.refresh();
   }
 
-  private renameConversation(folderId: string, conversationId: string, titleElement: HTMLElement): void {
+  private renameConversation(
+    folderId: string,
+    conversationId: string,
+    titleElement: HTMLElement
+  ): void {
     // Get current title
-    const conv = this.data.folderContents[folderId]?.find((c) => c.conversationId === conversationId);
+    const conv = this.data.folderContents[folderId]?.find(
+      (c) => c.conversationId === conversationId
+    );
     if (!conv) return;
 
     const currentTitle = conv.title;
@@ -1415,7 +1422,7 @@ export class FolderManager {
     const menuItems = [
       {
         label: folder.pinned ? this.t('folder_unpin') : this.t('folder_pin'),
-        action: () => this.togglePinFolder(folderId)
+        action: () => this.togglePinFolder(folderId),
       },
       { label: this.t('folder_create_subfolder'), action: () => this.createFolder(folderId) },
       { label: this.t('folder_rename'), action: () => this.renameFolder(folderId) },
@@ -1445,7 +1452,13 @@ export class FolderManager {
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
-  private showMoveToFolderDialog(conversationId: string, conversationTitle: string, url: string, isGem?: boolean, gemId?: string): void {
+  private showMoveToFolderDialog(
+    conversationId: string,
+    conversationTitle: string,
+    url: string,
+    isGem?: boolean,
+    gemId?: string
+  ): void {
     // Create dialog overlay
     const overlay = document.createElement('div');
     overlay.className = 'gv-folder-dialog-overlay';
@@ -1482,7 +1495,14 @@ export class FolderManager {
         folderItem.appendChild(name);
 
         folderItem.addEventListener('click', () => {
-          this.addConversationToFolderFromNative(folder.id, conversationId, conversationTitle, url, isGem, gemId);
+          this.addConversationToFolderFromNative(
+            folder.id,
+            conversationId,
+            conversationTitle,
+            url,
+            isGem,
+            gemId
+          );
           overlay.remove();
         });
 
@@ -1614,8 +1634,9 @@ export class FolderManager {
         mutation.removedNodes.forEach((node) => {
           if (node instanceof HTMLElement) {
             // Check if a menu panel was removed
-            const isMenuPanel = node.classList?.contains('mat-mdc-menu-panel') ||
-                               node.querySelector('.mat-mdc-menu-panel');
+            const isMenuPanel =
+              node.classList?.contains('mat-mdc-menu-panel') ||
+              node.querySelector('.mat-mdc-menu-panel');
             if (isMenuPanel) {
               this.debug('Observer: menu closed, clearing conversation state');
               this.lastClickedConversation = null;
@@ -1783,7 +1804,9 @@ export class FolderManager {
     // No fallback - if we don't have the clicked conversation element, we should not guess
     // The previous fallback logic using '.conversation-actions-container.selected' was incorrect
     // as it would select the currently focused conversation instead of the one user clicked
-    this.debugWarn('findConversationElementFromMenu: no conversation element found (lastClickedConversation is null)');
+    this.debugWarn(
+      'findConversationElementFromMenu: no conversation element found (lastClickedConversation is null)'
+    );
     return null;
   }
 
@@ -1792,131 +1815,152 @@ export class FolderManager {
 
   private setupConversationClickTracking(): void {
     // Track clicks on conversation more buttons
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const moreButton = target.closest('[data-test-id="actions-menu-button"]');
-      if (moreButton) {
-        this.debug('More button clicked:', moreButton);
+    document.addEventListener(
+      'click',
+      (e) => {
+        const target = e.target as HTMLElement;
+        const moreButton = target.closest('[data-test-id="actions-menu-button"]');
+        if (moreButton) {
+          this.debug('More button clicked:', moreButton);
 
-        let conversationEl: HTMLElement | null = null;
+          let conversationEl: HTMLElement | null = null;
 
-        // Strategy 1: In Gemini's new UI, the conversation div and actions-menu-button are siblings!
-        // Find the actions container first, then look for sibling conversation div
-        const actionsContainer = moreButton.closest('.conversation-actions-container');
-        if (actionsContainer) {
-          this.debug('Found actions container, looking for sibling conversation...');
-          // Look for previous sibling with data-test-id="conversation"
-          let sibling = actionsContainer.previousElementSibling;
-          while (sibling) {
-            if (sibling.getAttribute('data-test-id') === 'conversation') {
-              conversationEl = sibling as HTMLElement;
-              this.debug('Found conversation as sibling:', conversationEl);
-              break;
-            }
-            sibling = sibling.previousElementSibling;
-          }
-        }
-
-        // Strategy 2: Try traditional closest approach (for older UI patterns)
-        if (!conversationEl) {
-          this.debug('Trying closest with conversation selector...');
-          conversationEl = moreButton.closest('[data-test-id="conversation"]') as HTMLElement | null;
-        }
-
-        if (!conversationEl) {
-          this.debug('Trying history-item selector...');
-          conversationEl = moreButton.closest('[data-test-id^="history-item"]') as HTMLElement | null;
-        }
-
-        if (!conversationEl) {
-          this.debug('Trying conversation-card selector...');
-          conversationEl = moreButton.closest('.conversation-card') as HTMLElement | null;
-        }
-
-        // Strategy 3: Check parent container for conversation children
-        if (!conversationEl && actionsContainer && actionsContainer.parentElement) {
-          this.debug('Trying to find conversation in parent container...');
-          const parentContainer = actionsContainer.parentElement;
-          const conversationInParent = parentContainer.querySelector('[data-test-id="conversation"]') as HTMLElement | null;
-          if (conversationInParent) {
-            // Verify this is the right conversation by checking it's close to the actions container
-            const actionsIndex = Array.from(parentContainer.children).indexOf(actionsContainer);
-            const convIndex = Array.from(parentContainer.children).indexOf(conversationInParent);
-            if (Math.abs(actionsIndex - convIndex) <= 1) {
-              conversationEl = conversationInParent;
-              this.debug('Found conversation in parent container');
-            }
-          }
-        }
-
-        // Last resort fallback
-        if (!conversationEl) {
-          this.debugWarn('Could not find precise conversation element, using broader fallback');
-          conversationEl = moreButton.closest('[jslog]') as HTMLElement | null;
-        }
-
-        if (conversationEl) {
-          this.lastClickedConversation = conversationEl as HTMLElement;
-
-          // Debug: verify this element and show its attributes
-          const linkCount = conversationEl.querySelectorAll('a[href*="/app/"], a[href*="/gem/"]').length;
-          const jslogAttr = conversationEl.getAttribute('jslog');
-          const dataTestId = conversationEl.getAttribute('data-test-id');
-          this.debug('Tracked conversation element:', {
-            element: conversationEl,
-            linkCount,
-            jslog: jslogAttr,
-            dataTestId
-          });
-
-          // Extract conversation info immediately to avoid issues with multiple links later
-          const conversationId = this.extractNativeConversationId(conversationEl);
-          const title = this.extractNativeConversationTitle(conversationEl);
-          const url = this.extractNativeConversationUrl(conversationEl);
-
-          if (conversationId && title && url) {
-            this.lastClickedConversationInfo = { id: conversationId, title, url };
-            this.debug('✅ Extracted conversation info on click:', this.lastClickedConversationInfo);
-          } else {
-            this.debugWarn('⚠️ Failed to extract complete conversation info on click', { conversationId, title, url });
-            this.lastClickedConversationInfo = null;
-          }
-
-          // Fallback: after the click, the Angular Material menu is rendered
-          // into a global overlay container. Poll briefly to inject our item
-          // even if the mutation observer misses the insertion.
-          let attempts = 0;
-          const maxAttempts = 20; // ~1s at 50ms intervals
-          const timer = window.setInterval(() => {
-            attempts++;
-            const menuContent = document.querySelector('.mat-mdc-menu-panel .mat-mdc-menu-content') as HTMLElement | null;
-            if (menuContent) {
-              this.debug('Overlay poll: menu content found on attempt', attempts);
-              if (!menuContent.querySelector('.gv-move-to-folder-btn')) {
-                this.debug('Overlay poll: injecting Move to Folder');
-                this.injectMoveToFolderButton(menuContent);
+          // Strategy 1: In Gemini's new UI, the conversation div and actions-menu-button are siblings!
+          // Find the actions container first, then look for sibling conversation div
+          const actionsContainer = moreButton.closest('.conversation-actions-container');
+          if (actionsContainer) {
+            this.debug('Found actions container, looking for sibling conversation...');
+            // Look for previous sibling with data-test-id="conversation"
+            let sibling = actionsContainer.previousElementSibling;
+            while (sibling) {
+              if (sibling.getAttribute('data-test-id') === 'conversation') {
+                conversationEl = sibling as HTMLElement;
+                this.debug('Found conversation as sibling:', conversationEl);
+                break;
               }
-              window.clearInterval(timer);
-            } else if (attempts >= maxAttempts) {
-              this.debugWarn('Overlay poll: menu not found within attempts', maxAttempts);
-              window.clearInterval(timer);
+              sibling = sibling.previousElementSibling;
             }
-          }, 50);
+          }
+
+          // Strategy 2: Try traditional closest approach (for older UI patterns)
+          if (!conversationEl) {
+            this.debug('Trying closest with conversation selector...');
+            conversationEl = moreButton.closest(
+              '[data-test-id="conversation"]'
+            ) as HTMLElement | null;
+          }
+
+          if (!conversationEl) {
+            this.debug('Trying history-item selector...');
+            conversationEl = moreButton.closest(
+              '[data-test-id^="history-item"]'
+            ) as HTMLElement | null;
+          }
+
+          if (!conversationEl) {
+            this.debug('Trying conversation-card selector...');
+            conversationEl = moreButton.closest('.conversation-card') as HTMLElement | null;
+          }
+
+          // Strategy 3: Check parent container for conversation children
+          if (!conversationEl && actionsContainer && actionsContainer.parentElement) {
+            this.debug('Trying to find conversation in parent container...');
+            const parentContainer = actionsContainer.parentElement;
+            const conversationInParent = parentContainer.querySelector(
+              '[data-test-id="conversation"]'
+            ) as HTMLElement | null;
+            if (conversationInParent) {
+              // Verify this is the right conversation by checking it's close to the actions container
+              const actionsIndex = Array.from(parentContainer.children).indexOf(actionsContainer);
+              const convIndex = Array.from(parentContainer.children).indexOf(conversationInParent);
+              if (Math.abs(actionsIndex - convIndex) <= 1) {
+                conversationEl = conversationInParent;
+                this.debug('Found conversation in parent container');
+              }
+            }
+          }
+
+          // Last resort fallback
+          if (!conversationEl) {
+            this.debugWarn('Could not find precise conversation element, using broader fallback');
+            conversationEl = moreButton.closest('[jslog]') as HTMLElement | null;
+          }
+
+          if (conversationEl) {
+            this.lastClickedConversation = conversationEl as HTMLElement;
+
+            // Debug: verify this element and show its attributes
+            const linkCount = conversationEl.querySelectorAll(
+              'a[href*="/app/"], a[href*="/gem/"]'
+            ).length;
+            const jslogAttr = conversationEl.getAttribute('jslog');
+            const dataTestId = conversationEl.getAttribute('data-test-id');
+            this.debug('Tracked conversation element:', {
+              element: conversationEl,
+              linkCount,
+              jslog: jslogAttr,
+              dataTestId,
+            });
+
+            // Extract conversation info immediately to avoid issues with multiple links later
+            const conversationId = this.extractNativeConversationId(conversationEl);
+            const title = this.extractNativeConversationTitle(conversationEl);
+            const url = this.extractNativeConversationUrl(conversationEl);
+
+            if (conversationId && title && url) {
+              this.lastClickedConversationInfo = { id: conversationId, title, url };
+              this.debug(
+                '✅ Extracted conversation info on click:',
+                this.lastClickedConversationInfo
+              );
+            } else {
+              this.debugWarn('⚠️ Failed to extract complete conversation info on click', {
+                conversationId,
+                title,
+                url,
+              });
+              this.lastClickedConversationInfo = null;
+            }
+
+            // Fallback: after the click, the Angular Material menu is rendered
+            // into a global overlay container. Poll briefly to inject our item
+            // even if the mutation observer misses the insertion.
+            let attempts = 0;
+            const maxAttempts = 20; // ~1s at 50ms intervals
+            const timer = window.setInterval(() => {
+              attempts++;
+              const menuContent = document.querySelector(
+                '.mat-mdc-menu-panel .mat-mdc-menu-content'
+              ) as HTMLElement | null;
+              if (menuContent) {
+                this.debug('Overlay poll: menu content found on attempt', attempts);
+                if (!menuContent.querySelector('.gv-move-to-folder-btn')) {
+                  this.debug('Overlay poll: injecting Move to Folder');
+                  this.injectMoveToFolderButton(menuContent);
+                }
+                window.clearInterval(timer);
+              } else if (attempts >= maxAttempts) {
+                this.debugWarn('Overlay poll: menu not found within attempts', maxAttempts);
+                window.clearInterval(timer);
+              }
+            }, 50);
+          }
         }
-      }
-    }, true);
+      },
+      true
+    );
   }
 
   private extractNativeConversationId(conversationEl: HTMLElement): string | null {
     // DeepSeek: 从 href 属性提取 UUID
     const href = conversationEl.getAttribute('href') || '';
     const id = extractConversationId(href);
-    
+
     if (id) {
       this.debug('extractId: 提取到', id);
       return id;
     }
-    
+
     this.debugWarn('extractId: 无法从 href 提取 ID');
     return null;
   }
@@ -2031,12 +2075,12 @@ export class FolderManager {
       if (aria && aria.trim()) {
         return aria.trim();
       }
-      
+
       const titleAttr = conversationEl.getAttribute('title');
       if (titleAttr && titleAttr.trim()) {
         return titleAttr.trim();
       }
-      
+
       // 从文本内容提取
       const text = conversationEl.textContent?.trim() || '';
       if (text) {
@@ -2056,7 +2100,7 @@ export class FolderManager {
       this.debugWarn('extractUrl: no href found');
       return null;
     }
-    
+
     const full = href.startsWith('http') ? href : `https://chat.deepseek.com${href}`;
     this.debug('extractUrl:', full);
     return full;
@@ -2108,7 +2152,9 @@ export class FolderManager {
 
   private navigateToConversationById(folderId: string, conversationId: string): void {
     // Look up the latest conversation data from storage
-    const conv = this.data.folderContents[folderId]?.find((c) => c.conversationId === conversationId);
+    const conv = this.data.folderContents[folderId]?.find(
+      (c) => c.conversationId === conversationId
+    );
     if (!conv) {
       console.error('[FolderManager] Conversation not found:', conversationId);
       return;
@@ -2137,7 +2183,10 @@ export class FolderManager {
       }
 
       // 尝试找到并点击侧边栏的对话链接
-      const conversations = tryFindElements(DEEPSEEK_SELECTORS.conversationItem, this.sidebarContainer!);
+      const conversations = tryFindElements(
+        DEEPSEEK_SELECTORS.conversationItem,
+        this.sidebarContainer!
+      );
       for (const conv of Array.from(conversations)) {
         const href = (conv as HTMLElement).getAttribute('href');
         if (href && href.includes(conversationId)) {
@@ -2268,7 +2317,10 @@ export class FolderManager {
   private exportFolders(): void {
     // Prevent concurrent exports
     if (this.exportInProgress) {
-      this.showNotification(this.t('folder_export_in_progress') || 'Export already in progress', 'info');
+      this.showNotification(
+        this.t('folder_export_in_progress') || 'Export already in progress',
+        'info'
+      );
       return;
     }
 
@@ -2318,7 +2370,11 @@ export class FolderManager {
     strategyOptions.className = 'gv-folder-import-strategy-options';
 
     const mergeOption = this.createRadioOption('merge', this.t('folder_import_merge'), true);
-    const overwriteOption = this.createRadioOption('overwrite', this.t('folder_import_overwrite'), false);
+    const overwriteOption = this.createRadioOption(
+      'overwrite',
+      this.t('folder_import_overwrite'),
+      false
+    );
 
     strategyOptions.appendChild(mergeOption);
     strategyOptions.appendChild(overwriteOption);
@@ -2417,7 +2473,10 @@ export class FolderManager {
   private async handleImport(fileInput: HTMLInputElement, strategy: ImportStrategy): Promise<void> {
     // Prevent concurrent imports to avoid data corruption
     if (this.importInProgress) {
-      this.showNotification(this.t('folder_import_in_progress') || 'Import already in progress', 'info');
+      this.showNotification(
+        this.t('folder_import_in_progress') || 'Import already in progress',
+        'info'
+      );
       return;
     }
 
@@ -2482,8 +2541,12 @@ export class FolderManager {
         .replace('{folders}', String(stats.foldersImported))
         .replace('{conversations}', String(stats.conversationsImported));
 
-      if (strategy === 'merge' && (stats.duplicatesFoldersSkipped || stats.duplicatesConversationsSkipped)) {
-        const totalSkipped = (stats.duplicatesFoldersSkipped || 0) + (stats.duplicatesConversationsSkipped || 0);
+      if (
+        strategy === 'merge' &&
+        (stats.duplicatesFoldersSkipped || stats.duplicatesConversationsSkipped)
+      ) {
+        const totalSkipped =
+          (stats.duplicatesFoldersSkipped || 0) + (stats.duplicatesConversationsSkipped || 0);
         message = this.t('folder_import_success_skipped')
           .replace('{folders}', String(stats.foldersImported))
           .replace('{conversations}', String(stats.conversationsImported))

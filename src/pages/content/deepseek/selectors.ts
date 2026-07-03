@@ -1,14 +1,14 @@
 /**
  * DeepSeek Selectors Configuration
- * 
+ *
  * 重要提示：DeepSeek 使用混淆类名（如 _a1b2c3d），这些类名在每次部署时都会改变。
  * 因此我们采用多层级后备策略，优先使用稳定的选择器。
  */
 
 export interface SelectorConfig {
-  primary: string;           // 主选择器（最稳定）
-  fallbacks: string[];       // 后备选择器列表
-  description: string;       // 描述
+  primary: string; // 主选择器（最稳定）
+  fallbacks: string[]; // 后备选择器列表
+  description: string; // 描述
 }
 
 /**
@@ -22,9 +22,9 @@ export const DEEPSEEK_SELECTORS = {
    * 助手消息格式：<div class="ds-message _63c77b1">
    */
   userMessage: {
-    primary: '.d29f3d7d.ds-message',  // 用户消息的固定类名组合
+    primary: '.d29f3d7d.ds-message', // 用户消息的固定类名组合
     fallbacks: [
-      '.ds-message',  // 如果上面失效，回退到通用选择器
+      '.ds-message', // 如果上面失效，回退到通用选择器
       '[class*="ds-message"]',
     ],
     description: '用户消息元素',
@@ -34,13 +34,8 @@ export const DEEPSEEK_SELECTORS = {
    * 侧边栏容器选择器
    */
   sidebarContainer: {
-    primary: '.ds-scroll-area',  // DeepSeek 使用的滚动区域类名
-    fallbacks: [
-      '[class*="ds-scroll"]',
-      '[class*="sidebar"]',
-      'nav',
-      'aside',
-    ],
+    primary: '.ds-scroll-area', // DeepSeek 使用的滚动区域类名
+    fallbacks: ['[class*="ds-scroll"]', '[class*="sidebar"]', 'nav', 'aside'],
     description: '侧边栏容器',
   } as SelectorConfig,
 
@@ -49,12 +44,8 @@ export const DEEPSEEK_SELECTORS = {
    * 使用 href 属性匹配，因为 URL 结构相对稳定
    */
   conversationItem: {
-    primary: 'a[href*="/a/chat/s/"]',  // 通过 URL 模式匹配
-    fallbacks: [
-      'a[href*="/chat/"]',
-      '[class*="conversation"]',
-      '[class*="chat-item"]',
-    ],
+    primary: 'a[href*="/a/chat/s/"]', // 通过 URL 模式匹配
+    fallbacks: ['a[href*="/chat/"]', '[class*="conversation"]', '[class*="chat-item"]'],
     description: '侧边栏对话项',
   } as SelectorConfig,
 
@@ -62,12 +53,8 @@ export const DEEPSEEK_SELECTORS = {
    * 对话标题选择器
    */
   conversationTitle: {
-    primary: 'a[href*="/a/chat/s/"] div',  // 对话链接内的第一个 div
-    fallbacks: [
-      'a[href*="/a/chat/s/"] span',
-      '[class*="title"]',
-      '[class*="name"]',
-    ],
+    primary: 'a[href*="/a/chat/s/"] div', // 对话链接内的第一个 div
+    fallbacks: ['a[href*="/a/chat/s/"] span', '[class*="title"]', '[class*="name"]'],
     description: '对话标题',
   } as SelectorConfig,
 
@@ -76,11 +63,7 @@ export const DEEPSEEK_SELECTORS = {
    */
   scrollContainer: {
     primary: '.ds-scroll-area',
-    fallbacks: [
-      '[class*="scroll"]',
-      'main',
-      '#root',
-    ],
+    fallbacks: ['[class*="scroll"]', 'main', '#root'],
     description: '主对话区域滚动容器',
   } as SelectorConfig,
 };
@@ -104,9 +87,7 @@ export function tryFindElement(
     try {
       element = parent.querySelector(fallback);
       if (element) {
-        console.warn(
-          `[DeepSeek Voyager] ${config.description} 使用后备选择器: ${fallback}`
-        );
+        console.warn(`[DeepSeek Voyager] ${config.description} 使用后备选择器: ${fallback}`);
         return element;
       }
     } catch (e) {
@@ -135,9 +116,7 @@ export function tryFindElements(
     try {
       elements = parent.querySelectorAll(fallback);
       if (elements.length > 0) {
-        console.warn(
-          `[DeepSeek Voyager] ${config.description} 使用后备选择器: ${fallback}`
-        );
+        console.warn(`[DeepSeek Voyager] ${config.description} 使用后备选择器: ${fallback}`);
         return elements;
       }
     } catch (e) {
@@ -182,5 +161,3 @@ export function isConversationRoute(pathname = location.pathname): boolean {
 export function getCurrentConversationId(): string | null {
   return extractConversationId(location.pathname);
 }
-
-

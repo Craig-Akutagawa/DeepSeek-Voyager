@@ -133,24 +133,30 @@ export class TimelineManager {
     }
     this.isInitializing = true;
     console.log('[Timeline] 开始初始化');
-    
+
     const ok = await this.findCriticalElements();
     if (!ok) {
       this.isInitializing = false;
       return;
     }
-    
-    console.log('[Timeline] init: 准备 injectTimelineUI，scrollContainer:', this.scrollContainer ? '✅' : '❌ NULL');
+
+    console.log(
+      '[Timeline] init: 准备 injectTimelineUI，scrollContainer:',
+      this.scrollContainer ? '✅' : '❌ NULL'
+    );
     this.injectTimelineUI();
-    
-    console.log('[Timeline] init: 准备 setupEventListeners，scrollContainer:', this.scrollContainer ? '✅' : '❌ NULL');
+
+    console.log(
+      '[Timeline] init: 准备 setupEventListeners，scrollContainer:',
+      this.scrollContainer ? '✅' : '❌ NULL'
+    );
     this.setupEventListeners();
-    
+
     console.log('[Timeline] init: 准备 setupObservers');
     this.setupObservers();
     this.conversationId = this.computeConversationId();
     await this.loadStars();
-    
+
     // Subscribe to EventBus for cross-component starred state synchronization
     this.eventBusUnsubscribers.push(
       eventBus.on('starred:removed', ({ conversationId, turnId }) => {
@@ -236,11 +242,11 @@ export class TimelineManager {
         if (saved === 'flow' || saved === 'jump') this.scrollMode = saved;
       }
     } catch {}
-    
+
     // 初始化完成后，立即计算并渲染时间轴节点
     console.log('[Timeline] init: 准备首次渲染时间轴节点');
     this.recalculateAndRenderMarkers();
-    
+
     this.isInitializing = false;
     console.log('[Timeline] 初始化完成');
   }
@@ -305,9 +311,9 @@ export class TimelineManager {
       : defaultCandidates;
     let firstTurn: Element | null = null;
     let matchedSelector = '';
-    
+
     console.log('[Timeline] 尝试查找用户消息，候选选择器:', candidates);
-    
+
     for (const sel of candidates) {
       console.log('[Timeline] 尝试选择器:', sel);
       firstTurn = await this.waitForElement(sel, 4000);
@@ -358,7 +364,7 @@ export class TimelineManager {
     // DeepSeek: 查找包含对话内容的滚动容器
     // 策略：从第一个用户消息向上查找，找到最近的 .ds-scroll-area
     let dsScrollArea: HTMLElement | null = null;
-    
+
     if (firstTurn) {
       // 从用户消息元素向上查找滚动容器
       let parent = (firstTurn as HTMLElement).parentElement;
@@ -371,7 +377,7 @@ export class TimelineManager {
         parent = parent.parentElement;
       }
     }
-    
+
     // 如果没找到，尝试查找包含 .fbb737a4 的滚动区域（用户消息内容容器）
     if (!dsScrollArea) {
       const allScrollAreas = document.querySelectorAll('.ds-scroll-area');
@@ -383,7 +389,7 @@ export class TimelineManager {
         }
       }
     }
-    
+
     if (dsScrollArea) {
       this.scrollContainer = dsScrollArea;
       // DeepSeek: 将滚动容器也设为 conversationContainer，确保能找到所有用户消息
@@ -416,18 +422,21 @@ export class TimelineManager {
         console.log('[Timeline] ✅ conversationContainer 设为后备滚动容器');
       }
     }
-    
+
     // 最终检查
-    console.log('[Timeline] findCriticalElements 完成，scrollContainer:', this.scrollContainer ? '✅' : '❌ NULL');
+    console.log(
+      '[Timeline] findCriticalElements 完成，scrollContainer:',
+      this.scrollContainer ? '✅' : '❌ NULL'
+    );
     console.log('[Timeline] conversationContainer:', this.conversationContainer ? '✅' : '❌ NULL');
     console.log('[Timeline] userTurnSelector:', this.userTurnSelector);
-    
+
     // 确保 conversationContainer 已设置
     if (!this.conversationContainer) {
       console.error('[Timeline] ❌ conversationContainer 未设置，初始化失败');
       return false;
     }
-    
+
     return true;
   }
 
@@ -436,7 +445,7 @@ export class TimelineManager {
       const user = localStorage.getItem('deepseekTimelineUserTurnSelector');
       if (user && typeof user === 'string') return user;
       const auto = localStorage.getItem('deepseekTimelineUserTurnSelectorAuto');
-      
+
       // 清除不精确的选择器（.ds-message 会匹配所有消息，包括助手消息）
       if (auto === '.ds-message') {
         console.log('[Timeline] 检测到不精确的选择器 .ds-message，已清除');
@@ -445,7 +454,7 @@ export class TimelineManager {
         } catch {}
         return '';
       }
-      
+
       return auto && typeof auto === 'string' ? auto : '';
     } catch {
       return '';
@@ -702,7 +711,10 @@ export class TimelineManager {
     )
       return;
     console.log('[Timeline] recalculate: conversationContainer =', this.conversationContainer);
-    console.log('[Timeline] recalculate: conversationContainer 类名 =', this.conversationContainer.className);
+    console.log(
+      '[Timeline] recalculate: conversationContainer 类名 =',
+      this.conversationContainer.className
+    );
     const userTurnNodeList = this.conversationContainer.querySelectorAll(this.userTurnSelector);
     console.log('[Timeline] recalculate: userTurnSelector =', this.userTurnSelector);
     console.log('[Timeline] recalculate: 找到元素数量 =', userTurnNodeList.length);
@@ -714,7 +726,7 @@ export class TimelineManager {
         console.log('[Timeline] recalculate: 第二个元素类名 =', userTurnNodeList[1].className);
       }
     }
-    
+
     this.visibleRange = { start: 0, end: -1 };
     if (userTurnNodeList.length === 0) {
       console.log('[Timeline] ⚠️ 没有找到用户消息元素');
@@ -748,7 +760,7 @@ export class TimelineManager {
     // 因为 offsetTop 相对于 offsetParent，而不是滚动容器
     const firstRect = (allEls[0] as HTMLElement).getBoundingClientRect();
     const firstTurnOffset = firstRect.top + (this.scrollContainer?.scrollTop || 0);
-    
+
     console.log('[Timeline] recalculate: dedupeByTextAndOffset 前 =', allEls.length);
     allEls = this.dedupeByTextAndOffset(allEls, firstTurnOffset);
     console.log('[Timeline] recalculate: dedupeByTextAndOffset 后 =', allEls.length);
@@ -769,7 +781,7 @@ export class TimelineManager {
     console.log('[Timeline] 🔍 详细位置信息：');
     console.log('[Timeline] firstTurnOffset =', firstTurnOffset, 'px');
     console.log('[Timeline] contentSpan =', contentSpan, 'px');
-    
+
     this.markerMap.clear();
     this.markers = Array.from(allEls).map((el, idx) => {
       const element = el as HTMLElement;
@@ -778,7 +790,7 @@ export class TimelineManager {
       const offsetFromStart = elementOffset - firstTurnOffset;
       let n = offsetFromStart / contentSpan;
       n = Math.max(0, Math.min(1, n));
-      
+
       // 详细日志
       console.log(`[Timeline] 节点 ${idx + 1}:`, {
         rectTop: rect.top,
@@ -786,9 +798,9 @@ export class TimelineManager {
         绝对位置: elementOffset,
         offsetFromStart: offsetFromStart,
         相对位置n: n,
-        文本预览: element.textContent?.substring(0, 20) + '...'
+        文本预览: element.textContent?.substring(0, 20) + '...',
       });
-      
+
       const id = this.ensureTurnId(element, idx);
       const m = {
         id,
@@ -1705,7 +1717,10 @@ export class TimelineManager {
     const cid = this.conversationId;
     if (!cid) return;
     try {
-      localStorage.setItem(`deepseekTimelineStars:${cid}`, JSON.stringify(Array.from(this.starred)));
+      localStorage.setItem(
+        `deepseekTimelineStars:${cid}`,
+        JSON.stringify(Array.from(this.starred))
+      );
     } catch {}
   }
 
@@ -1720,7 +1735,10 @@ export class TimelineManager {
         this.starred.add(msg.turnId);
         this.starredAtMap.set(msg.turnId, msg.starredAt);
       });
-      localStorage.setItem(`deepseekTimelineStars:${cid}`, JSON.stringify(Array.from(this.starred)));
+      localStorage.setItem(
+        `deepseekTimelineStars:${cid}`,
+        JSON.stringify(Array.from(this.starred))
+      );
     } catch (e) {
       try {
         const raw = localStorage.getItem(`deepseekTimelineStars:${cid}`);
@@ -1751,7 +1769,9 @@ export class TimelineManager {
     if (title && title !== 'DeepSeek' && title !== 'DeepSeek Chat') {
       return title;
     }
-    const selected = document.querySelector('.gv-folder-conversation-selected .gv-conversation-title');
+    const selected = document.querySelector(
+      '.gv-folder-conversation-selected .gv-conversation-title'
+    );
     if (selected?.textContent) {
       return selected.textContent.trim();
     }
@@ -1789,7 +1809,7 @@ export class TimelineManager {
               window.history.replaceState(
                 null,
                 '',
-                window.location.pathname + window.location.search,
+                window.location.pathname + window.location.search
               );
             }, 900);
           }, 100);
@@ -1814,7 +1834,9 @@ export class TimelineManager {
   destroy(): void {
     // Unsubscribe EventBus listeners
     this.eventBusUnsubscribers.forEach((unsub) => {
-      try { unsub(); } catch {}
+      try {
+        unsub();
+      } catch {}
     });
     this.eventBusUnsubscribers = [];
 

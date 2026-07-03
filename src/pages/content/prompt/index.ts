@@ -99,7 +99,10 @@ async function writeStorage<T>(key: string, value: T): Promise<void> {
   }
 }
 
-function createEl<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
+function createEl<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className?: string
+): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   if (className) el.className = className;
   return el;
@@ -160,7 +163,10 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-function computeAnchoredPosition(trigger: HTMLElement, panel: HTMLElement): { top: number; left: number } {
+function computeAnchoredPosition(
+  trigger: HTMLElement,
+  panel: HTMLElement
+): { top: number; left: number } {
   const rect = trigger.getBoundingClientRect();
   const vw = window.innerWidth;
   const pad = 8;
@@ -174,10 +180,12 @@ export async function startPromptManager(): Promise<void> {
   try {
     // markdown config: respect single newlines as <br> and KaTeX inline/display math
     try {
-      marked.use(markedKatex({
-        throwOnError: false,
-        output: 'html',
-      } as any));
+      marked.use(
+        markedKatex({
+          throwOnError: false,
+          output: 'html',
+        } as any)
+      );
       marked.setOptions({ breaks: true });
     } catch {}
     // Initialize centralized i18n system
@@ -196,17 +204,23 @@ export async function startPromptManager(): Promise<void> {
     img.height = 24;
     img.alt = 'pm';
     img.src = getRuntimeUrl('icon-32.png');
-    img.addEventListener('error', () => {
-      // dev fallback
-      const devUrl = getRuntimeUrl('icon-32.png');
-      if (img.src !== devUrl) img.src = devUrl;
-    }, { once: true });
+    img.addEventListener(
+      'error',
+      () => {
+        // dev fallback
+        const devUrl = getRuntimeUrl('icon-32.png');
+        if (img.src !== devUrl) img.src = devUrl;
+      },
+      { once: true }
+    );
     trigger.appendChild(img);
     document.body.appendChild(trigger);
     // Helper: place trigger near a target element (e.g. Gemini FAB touch target)
     function placeTriggerNextToHost(): void {
       try {
-        const candidates = Array.from(document.querySelectorAll('span.mat-mdc-button-touch-target')) as HTMLElement[];
+        const candidates = Array.from(
+          document.querySelectorAll('span.mat-mdc-button-touch-target')
+        ) as HTMLElement[];
         if (!candidates.length) return;
         const vw = window.innerWidth;
         const vh = window.innerHeight;
@@ -214,12 +228,12 @@ export async function startPromptManager(): Promise<void> {
           .map((el) => ({ el, r: el.getBoundingClientRect() }))
           .filter((x) => x.r.width > 0 && x.r.height > 0)
           // choose the element closest to bottom-right corner
-          .sort((a, b) => (a.r.bottom + a.r.right) - (b.r.bottom + b.r.right))
+          .sort((a, b) => a.r.bottom + a.r.right - (b.r.bottom + b.r.right))
           .reduce((_, x) => x, undefined as any) as { el: HTMLElement; r: DOMRect } | undefined;
         if (!pick) return;
         const r = pick.r;
-        const tw = (trigger.getBoundingClientRect().width || 36);
-        const th = (trigger.getBoundingClientRect().height || 36);
+        const tw = trigger.getBoundingClientRect().width || 36;
+        const th = trigger.getBoundingClientRect().height || 36;
         const gap = 10;
         const right = Math.max(6, Math.round(vw - r.left + gap));
         const bottom = Math.max(6, Math.round(vh - (r.top + r.height / 2 + th / 2)));
@@ -240,7 +254,9 @@ export async function startPromptManager(): Promise<void> {
         requestAnimationFrame(placeTriggerNextToHost);
         window.setTimeout(placeTriggerNextToHost, 350);
       }
-    } catch { placeTriggerNextToHost(); }
+    } catch {
+      placeTriggerNextToHost();
+    }
 
     // Panel root
     const panel = createEl('div', 'gv-pm-panel gv-hidden');
@@ -266,11 +282,14 @@ export async function startPromptManager(): Promise<void> {
     langSel.appendChild(optEn);
     langSel.appendChild(optZh);
     // Set initial language value asynchronously
-    i18n.get().then((lang) => {
-      langSel.value = lang;
-    }).catch(() => {
-      langSel.value = 'en';
-    });
+    i18n
+      .get()
+      .then((lang) => {
+        langSel.value = lang;
+      })
+      .catch(() => {
+        langSel.value = 'en';
+      });
 
     const lockBtn = createEl('button', 'gv-pm-lock');
     lockBtn.setAttribute('aria-pressed', 'false');
@@ -413,7 +432,8 @@ export async function startPromptManager(): Promise<void> {
       const q = (searchInput.value || '').trim().toLowerCase();
       const selectedTagList = Array.from(selectedTags);
       const filtered = items.filter((it) => {
-        const okTag = selectedTagList.length === 0 || selectedTagList.every((t) => it.tags.includes(t));
+        const okTag =
+          selectedTagList.length === 0 || selectedTagList.every((t) => it.tags.includes(t));
         if (!okTag) return false;
         if (!q) return true;
         return it.text.toLowerCase().includes(q) || it.tags.some((t) => t.includes(q));
@@ -437,7 +457,13 @@ export async function startPromptManager(): Promise<void> {
           if (typeof out === 'string') {
             md.innerHTML = DOMPurify.sanitize(out);
           } else {
-            out.then((html) => { md.innerHTML = DOMPurify.sanitize(html); }).catch(() => { md.textContent = it.text; });
+            out
+              .then((html) => {
+                md.innerHTML = DOMPurify.sanitize(html);
+              })
+              .catch(() => {
+                md.textContent = it.text;
+              });
           }
         } catch {
           md.textContent = it.text;
@@ -456,7 +482,9 @@ export async function startPromptManager(): Promise<void> {
           e.stopPropagation();
           // Start inline edit using the add form fields
           (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).value = it.text;
-          (addForm.querySelector('.gv-pm-input-tags') as HTMLInputElement).value = (it.tags || []).join(', ');
+          (addForm.querySelector('.gv-pm-input-tags') as HTMLInputElement).value = (
+            it.tags || []
+          ).join(', ');
           addForm.classList.remove('gv-hidden');
           (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).focus();
           editingId = it.id;
@@ -500,16 +528,33 @@ export async function startPromptManager(): Promise<void> {
           const vw = window.innerWidth;
           const side: 'left' | 'right' = r.right + 220 > vw ? 'left' : 'right';
           const top = Math.max(8, r.top + window.scrollY - 6);
-          const left = side === 'right' ? r.right + window.scrollX + 10 : r.left + window.scrollX - pop.offsetWidth - 10;
+          const left =
+            side === 'right'
+              ? r.right + window.scrollX + 10
+              : r.left + window.scrollX - pop.offsetWidth - 10;
           pop.style.top = `${Math.round(top)}px`;
           pop.style.left = `${Math.round(Math.max(8, left))}px`;
           pop.setAttribute('data-side', side);
-          const cleanup = () => { try { pop.remove(); } catch {} window.removeEventListener('keydown', onKey); window.removeEventListener('click', onOutside, true); };
-          const onOutside = (ev: MouseEvent) => { const t = ev.target as HTMLElement; if (!t.closest('.gv-pm-confirm')) cleanup(); };
-          const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') cleanup(); };
+          const cleanup = () => {
+            try {
+              pop.remove();
+            } catch {}
+            window.removeEventListener('keydown', onKey);
+            window.removeEventListener('click', onOutside, true);
+          };
+          const onOutside = (ev: MouseEvent) => {
+            const t = ev.target as HTMLElement;
+            if (!t.closest('.gv-pm-confirm')) cleanup();
+          };
+          const onKey = (ev: KeyboardEvent) => {
+            if (ev.key === 'Escape') cleanup();
+          };
           window.addEventListener('click', onOutside, true);
           window.addEventListener('keydown', onKey, { passive: true } as any);
-          no.addEventListener('click', (ev) => { ev.stopPropagation(); cleanup(); });
+          no.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            cleanup();
+          });
           yes.addEventListener('click', async (ev) => {
             ev.stopPropagation();
             items = items.filter((x) => x.id !== it.id);
@@ -556,7 +601,7 @@ export async function startPromptManager(): Promise<void> {
       lockBtn.setAttribute('aria-pressed', locked ? 'true' : 'false');
       // When locked, show 🔒; when unlocked, show 🔓.
       lockBtn.setAttribute('data-icon', locked ? '🔒' : '🔓');
-      lockBtn.title = locked ? (i18n.t('pm_unlock') || 'Unlock') : (i18n.t('pm_lock') || 'Lock');
+      lockBtn.title = locked ? i18n.t('pm_unlock') || 'Unlock' : i18n.t('pm_lock') || 'Lock';
       panel.classList.toggle('gv-locked', locked);
     }
 
@@ -658,10 +703,14 @@ export async function startPromptManager(): Promise<void> {
       { capture: true }
     );
     // Close on Escape
-    window.addEventListener('keydown', (ev: KeyboardEvent) => {
-      if (!open) return;
-      if (ev.key === 'Escape') closePanel();
-    }, { passive: true } as any);
+    window.addEventListener(
+      'keydown',
+      (ev: KeyboardEvent) => {
+        if (!open) return;
+        if (ev.key === 'Escape') closePanel();
+      },
+      { passive: true } as any
+    );
 
     lockBtn.addEventListener('click', async (ev) => {
       ev.preventDefault();
@@ -669,7 +718,9 @@ export async function startPromptManager(): Promise<void> {
       locked = !locked;
       await writeStorage(STORAGE_KEYS.locked, locked);
       applyLockUI();
-      try { (ev.currentTarget as HTMLButtonElement)?.blur?.(); } catch {}
+      try {
+        (ev.currentTarget as HTMLButtonElement)?.blur?.();
+      } catch {}
       if (locked) {
         const rect = panel.getBoundingClientRect();
         savedPos = { left: rect.left, top: rect.top };
@@ -689,16 +740,22 @@ export async function startPromptManager(): Promise<void> {
     trigger.addEventListener('pointerdown', (ev: PointerEvent) => {
       if (typeof ev.button === 'number' && ev.button !== 0) return;
       draggingTrigger = true;
-      try { trigger.setPointerCapture?.(ev.pointerId); } catch {}
+      try {
+        trigger.setPointerCapture?.(ev.pointerId);
+      } catch {}
     });
-    window.addEventListener('pointerup', async () => {
-      if (draggingTrigger) {
-        draggingTrigger = false;
-        const r = parseFloat((trigger.style.right || '').replace('px', '')) || 18;
-        const b = parseFloat((trigger.style.bottom || '').replace('px', '')) || 18;
-        await writeStorage(STORAGE_KEYS.triggerPos, { right: r, bottom: b });
-      }
-    }, { passive: true });
+    window.addEventListener(
+      'pointerup',
+      async () => {
+        if (draggingTrigger) {
+          draggingTrigger = false;
+          const r = parseFloat((trigger.style.right || '').replace('px', '')) || 18;
+          const b = parseFloat((trigger.style.bottom || '').replace('px', '')) || 18;
+          await writeStorage(STORAGE_KEYS.triggerPos, { right: r, bottom: b });
+        }
+      },
+      { passive: true }
+    );
 
     langSel.addEventListener('change', async () => {
       const next = langSel.value as 'en' | 'zh';
@@ -737,23 +794,34 @@ export async function startPromptManager(): Promise<void> {
       ev.stopPropagation();
       try {
         // Send message to background to open popup
-        const response = await browser.runtime.sendMessage({ type: 'gv.openPopup' }) as { ok?: boolean };
+        const response = (await browser.runtime.sendMessage({ type: 'gv.openPopup' })) as {
+          ok?: boolean;
+        };
         if (!response?.ok) {
           // If programmatic opening failed, show a helpful message
-          setNotice(i18n.t('pm_settings_fallback') || '请点击浏览器工具栏中的扩展图标打开设置', 'err');
+          setNotice(
+            i18n.t('pm_settings_fallback') || '请点击浏览器工具栏中的扩展图标打开设置',
+            'err'
+          );
         }
       } catch (err) {
         console.warn('[PromptManager] Failed to open settings:', err);
-        setNotice(i18n.t('pm_settings_fallback') || '请点击浏览器工具栏中的扩展图标打开设置', 'err');
+        setNotice(
+          i18n.t('pm_settings_fallback') || '请点击浏览器工具栏中的扩展图标打开设置',
+          'err'
+        );
       }
     });
 
-    (addForm.querySelector('.gv-pm-cancel') as HTMLButtonElement).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      editingId = null;
-      addForm.classList.add('gv-hidden');
-    });
+    (addForm.querySelector('.gv-pm-cancel') as HTMLButtonElement).addEventListener(
+      'click',
+      (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        editingId = null;
+        addForm.classList.add('gv-hidden');
+      }
+    );
     addForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const text = (addForm.querySelector('.gv-pm-input-text') as HTMLTextAreaElement).value.trim();
@@ -761,7 +829,9 @@ export async function startPromptManager(): Promise<void> {
       const tags = dedupeTags((tagsRaw || '').split(',').map((s) => s.trim()));
       if (!text) return;
       if (editingId) {
-        const dup = items.some((x) => x.id !== editingId && x.text.trim().toLowerCase() === text.toLowerCase());
+        const dup = items.some(
+          (x) => x.id !== editingId && x.text.trim().toLowerCase() === text.toLowerCase()
+        );
         if (dup) {
           setInlineHint(i18n.t('pm_duplicate') || 'Duplicate prompt', 'err');
           return;
@@ -829,13 +899,19 @@ export async function startPromptManager(): Promise<void> {
           setNotice(i18n.t('pm_import_invalid') || 'Invalid file format', 'err');
           return;
         }
-        const arr: PromptItem[] = Array.isArray(json) ? json : Array.isArray(json.items) ? json.items : [];
+        const arr: PromptItem[] = Array.isArray(json)
+          ? json
+          : Array.isArray(json.items)
+            ? json.items
+            : [];
         const valid: PromptItem[] = [];
         const seen = new Set<string>();
         for (const it of arr) {
           const text = String((it && (it as any).text) || '').trim();
           if (!text) continue;
-          const tags = Array.isArray((it as any).tags) ? (it as any).tags.map((t: any) => String(t)) : [];
+          const tags = Array.isArray((it as any).tags)
+            ? (it as any).tags.map((t: any) => String(t))
+            : [];
           const key = `${text.toLowerCase()}|${tags.sort().join(',')}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -859,7 +935,10 @@ export async function startPromptManager(): Promise<void> {
           }
           items = Array.from(map.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           await writeStorage(STORAGE_KEYS.items, items);
-          setNotice((i18n.t('pm_import_success') || 'Imported').replace('{count}', String(valid.length)), 'ok');
+          setNotice(
+            (i18n.t('pm_import_success') || 'Imported').replace('{count}', String(valid.length)),
+            'ok'
+          );
           renderTags();
           renderList();
         } else {
@@ -876,18 +955,22 @@ export async function startPromptManager(): Promise<void> {
     refreshUITexts();
 
     // Cleanup on page unload to prevent memory leaks
-    window.addEventListener('beforeunload', () => {
-      try {
-        chrome.storage?.onChanged?.removeListener(storageChangeHandler);
-      } catch (e) {
-        console.error('[Gemini Voyager] Failed to remove storage listener on unload:', e);
-      }
-    }, { once: true });
+    window.addEventListener(
+      'beforeunload',
+      () => {
+        try {
+          chrome.storage?.onChanged?.removeListener(storageChangeHandler);
+        } catch (e) {
+          console.error('[Gemini Voyager] Failed to remove storage listener on unload:', e);
+        }
+      },
+      { once: true }
+    );
   } catch (err) {
-    try { (window as any).console?.error?.('Prompt Manager init failed', err); } catch {}
+    try {
+      (window as any).console?.error?.('Prompt Manager init failed', err);
+    } catch {}
   }
 }
 
 export default { startPromptManager };
-
-

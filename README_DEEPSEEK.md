@@ -5,7 +5,7 @@
   <h1>DeepSeek Voyager</h1>
   <h3>Supercharge Your DeepSeek Experience ✨</h3>
   <p>Navigate conversations with an elegant timeline, organize chats with folders, and export your chats—all in one powerful extension.</p>
-  
+
   <p>
     <img src="https://img.shields.io/badge/Chrome-✓-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome">
     <img src="https://img.shields.io/badge/Edge-✓-0078D7?style=flat-square&logo=microsoftedge&logoColor=white" alt="Edge">
@@ -20,6 +20,7 @@
 ### 📍 Timeline Navigation
 
 Visual conversation navigation with clickable message nodes:
+
 - Click nodes to jump to messages
 - Hover for message preview
 - Long-press to star important messages (synced across tabs)
@@ -29,6 +30,7 @@ Visual conversation navigation with clickable message nodes:
 ### 📂 Folder Organization
 
 Manage conversations with drag-and-drop folders:
+
 - Two-level hierarchy (folders and subfolders)
 - Right-click menu for rename/duplicate/delete
 - Local storage, synced across devices
@@ -38,6 +40,7 @@ Manage conversations with drag-and-drop folders:
 ### 💾 Chat Export (JSON + Markdown/PDF)
 
 Export conversations as:
+
 - Structured JSON
 - Markdown/PDF (images auto-packaged, print-friendly)
 - Click export icon to save your chats
@@ -95,6 +98,7 @@ bun run build:all      # All browsers
 ```
 
 Or with npm/pnpm:
+
 ```bash
 pnpm install
 pnpm run dev:chrome    # Chrome
@@ -127,11 +131,13 @@ This project is adapted from [Gemini Voyager](https://github.com/Nagi-ovo/gemini
 ## ⚠️ Important Notes
 
 DeepSeek uses obfuscated class names (e.g., `_a1b2c3d`) that may change with each deployment. This extension uses:
+
 - Stable selectors where possible (`.ds-message`, `.ds-scroll-area`)
 - Attribute-based selectors (`a[href*="/a/chat/s/"]`)
 - Multiple fallback strategies
 
 If the extension stops working after a DeepSeek update, please open an issue with:
+
 1. Browser console errors
 2. DeepSeek's current DOM structure (F12 → Inspect element)
 
@@ -153,4 +159,3 @@ MIT License - See [LICENSE](LICENSE) for details
 <div align="center">
   <p>Made with ❤️ for the DeepSeek community</p>
 </div>
-

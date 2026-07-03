@@ -45,7 +45,7 @@ function initializeTimeline(): void {
     console.log('[Timeline] 已在初始化中，跳过重复调用');
     return;
   }
-  
+
   chrome.storage?.sync?.get({ deepseekTimelineEnabled: false }, (res) => {
     timelineEnabled = !!res.deepseekTimelineEnabled;
     if (!timelineEnabled) {
@@ -60,7 +60,7 @@ function initializeTimeline(): void {
       timelineManagerInstance = null;
     }
     removeTimelineDOM();
-    
+
     isInitializing = true;
     timelineManagerInstance = new TimelineManager();
     timelineManagerInstance
